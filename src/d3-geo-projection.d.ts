@@ -5,4 +5,6 @@ declare module 'd3-geo-projection' {
   export function geoCylindricalEqualArea(): GeoProjection & {
     parallel(angle: number): GeoProjection;
   };
+  export function geoInterruptedHomolosine(): GeoProjection;
+  export function geoPolyhedralWaterman(): GeoProjection;
 }

@@ -1,6 +1,12 @@
 import type { ExtensionMessage, Projection } from './types';
-import { geoMercator, type GeoProjection } from 'd3-geo';
-import { geoRobinson, geoCylindricalEqualArea } from 'd3-geo-projection';
+import { geoMercator, geoEquirectangular, type GeoProjection } from 'd3-geo';
+import {
+  geoRobinson,
+  geoCylindricalEqualArea,
+  geoInterruptedHomolosine,
+  geoPolyhedralWaterman,
+} from 'd3-geo-projection';
+import { geoAirocean } from 'd3-geo-polygon';
 
 function assert(condition: unknown, message?: string): asserts condition {
   if (!condition) {
@@ -121,6 +127,38 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => void> = {
       image,
       geoCylindricalEqualArea()
         .parallel(45)
+        .scale(image.width / (2 * Math.PI))
+        .translate([image.width / 2, image.height / 2]),
+    ).toDataURL();
+  },
+  'Goode Homolosine': (image) => {
+    image.src = reproject(
+      image,
+      geoInterruptedHomolosine()
+        .scale(image.width / (2 * Math.PI))
+        .translate([image.width / 2, image.height / 2]),
+    ).toDataURL();
+  },
+  Equirectangular: (image) => {
+    image.src = reproject(
+      image,
+      geoEquirectangular()
+        .scale(image.width / (2 * Math.PI))
+        .translate([image.width / 2, image.height / 2]),
+    ).toDataURL();
+  },
+  'Waterman Butterfly': (image) => {
+    image.src = reproject(
+      image,
+      geoPolyhedralWaterman()
+        .scale(image.width / (2 * Math.PI))
+        .translate([image.width / 2, image.height / 2]),
+    ).toDataURL();
+  },
+  Dymaxion: (image) => {
+    image.src = reproject(
+      image,
+      geoAirocean()
         .scale(image.width / (2 * Math.PI))
         .translate([image.width / 2, image.height / 2]),
     ).toDataURL();
