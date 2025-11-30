@@ -6,6 +6,7 @@ for (const projection of PROJECTIONS) {
     title: projection,
     contexts: ['image'],
   });
+  // consider a separator to split the xkcd ones from other interesting ones
 }
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
