@@ -1,45 +1,30 @@
-/**
- * RGBA color value with each channel in 0-255 range.
- */
-export type RGBAPixel = [number, number, number, number];
+export type Rgba = [number, number, number, number];
 
-/**
- * Performs bilinear interpolation to blend pixel values at fractional coordinates.
- *
- * Bilinear interpolation smooths images by blending the four nearest pixels based
- * on fractional position within the pixel grid.
- *
- * @see https://en.wikipedia.org/wiki/Bilinear_interpolation
- *
- * @param imageData - The source image data containing pixel values
- * @param width - Width of the source image in pixels
- * @param height - Height of the source image in pixels
- * @param x - Fractional x-coordinate (e.g., 10.25 means 25% between pixels 10 and 11)
- * @param y - Fractional y-coordinate (e.g., 20.75 means 75% between pixels 20 and 21)
- * @returns RGBA pixel values for the interpolated pixel
- */
+export function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+// see https://en.wikipedia.org/wiki/Bilinear_interpolation
 export function bilinearInterpolate(
-  imageData: ImageData,
+  imageData: Pick<ImageData, 'data'>,
   width: number,
   height: number,
   x: number,
   y: number,
-): RGBAPixel {
-  // Get the integer coordinates of the top-left pixel in the 2x2 block
+): Rgba {
   const x0 = Math.floor(x);
   const y0 = Math.floor(y);
   const x1 = x0 + 1;
   const y1 = y0 + 1;
 
-  // Extract fractional parts - how far between pixels (0.0 to 1.0)
   const tx = x - x0;
   const ty = y - y0;
 
   // Clamp coordinates to image bounds
-  const clampX0 = Math.max(0, Math.min(width - 1, x0));
-  const clampY0 = Math.max(0, Math.min(height - 1, y0));
-  const clampX1 = Math.max(0, Math.min(width - 1, x1));
-  const clampY1 = Math.max(0, Math.min(height - 1, y1));
+  const clampX0 = clamp(x0, 0, width - 1);
+  const clampY0 = clamp(y0, 0, height - 1);
+  const clampX1 = clamp(x1, 0, width - 1);
+  const clampY1 = clamp(y1, 0, height - 1);
 
   // Calculate byte indices for the four corner pixels
   // ImageData stores pixels as [R, G, B, A, R, G, B, A, ...]
@@ -48,7 +33,7 @@ export function bilinearInterpolate(
   const idx01 = (clampY1 * width + clampX0) * 4; // bottom-left
   const idx11 = (clampY1 * width + clampX1) * 4; // bottom-right
 
-  const result: RGBAPixel = [0, 0, 0, 0];
+  const result: Rgba = [0, 0, 0, 0];
 
   // Interpolate each color channel (R, G, B, A) independently
   for (let channel = 0; channel < 4; channel++) {
