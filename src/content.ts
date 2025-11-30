@@ -31,21 +31,49 @@ function reproject(
   const sourceWidth = sourceImage.naturalWidth || sourceImage.width;
   const sourceHeight = sourceImage.naturalHeight || sourceImage.height;
 
-  // Calculate destination bounds from projection
-  const westEdge = destProjection([-180, 0]);
-  const eastEdge = destProjection([180, 0]);
-  const northPole = destProjection([0, 90]);
-  const southPole = destProjection([0, -90]);
+  // First, find the natural bounds of the projection with unit scale
+  const unitProjection = destProjection.scale(1).translate([0, 0]);
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
 
-  assert(westEdge != null && eastEdge != null && northPole != null && southPole != null);
+  // Sample points across the globe to find the actual bounds
+  for (let lat = -90; lat <= 90; lat += 10) {
+    for (let lon = -180; lon <= 180; lon += 10) {
+      const point = unitProjection([lon, lat]);
+      if (point != null) {
+        minX = Math.min(minX, point[0]);
+        maxX = Math.max(maxX, point[0]);
+        minY = Math.min(minY, point[1]);
+        maxY = Math.max(maxY, point[1]);
+      }
+    }
+  }
 
-  const minX = westEdge[0];
-  const maxX = eastEdge[0];
-  const minY = northPole[1];
-  const maxY = southPole[1];
+  assert(
+    isFinite(minX) && isFinite(maxX) && isFinite(minY) && isFinite(maxY),
+    'could not determine valid projection bounds',
+  );
 
-  const destWidth = Math.ceil(maxX - minX);
-  const destHeight = Math.ceil(maxY - minY);
+  const naturalWidth = maxX - minX;
+  const naturalHeight = maxY - minY;
+
+  assert(naturalWidth > 0 && naturalHeight > 0, 'invalid natural dimensions');
+
+  // Calculate scale to fit the output within the source image width
+  const scale = sourceWidth / naturalWidth;
+  const destWidth = sourceWidth;
+  const destHeight = Math.ceil(naturalHeight * scale);
+
+  // Reconfigure projection with proper scale and translate
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  destProjection
+    .scale(scale)
+    .translate([destWidth / 2 - centerX * scale, destHeight / 2 - centerY * scale]);
+
+  console.log({ naturalWidth, naturalHeight, scale, destWidth, destHeight });
 
   const mercator = geoMercator()
     .scale(sourceWidth / (2 * Math.PI))
@@ -69,9 +97,15 @@ function reproject(
   const sourceData = sourceCtx.getImageData(0, 0, sourceWidth, sourceHeight);
   const destData = destCtx.createImageData(destWidth, destHeight);
 
+  const startTime = performance.now();
+  console.log('Starting reprojection loop...');
   for (let y = 0; y < destHeight; y++) {
+    if (y % 100 === 0) {
+      const elapsed = performance.now() - startTime;
+      console.log(`Progress: ${y}/${destHeight} (${elapsed.toFixed(0)}ms elapsed)`);
+    }
     for (let x = 0; x < destWidth; x++) {
-      const destPixel: [number, number] = [x + minX, y + minY];
+      const destPixel: [number, number] = [x, y];
       const lonLat = destProjection.invert(destPixel);
 
       if (
@@ -110,34 +144,21 @@ function reproject(
   }
 
   destCtx.putImageData(destData, 0, 0);
+  const endTime = performance.now();
+  console.log(`Reprojection complete in ${(endTime - startTime).toFixed(0)}ms`);
+  console.log(`Output canvas: ${destCanvas.width}x${destCanvas.height}`);
   return destCanvas;
 }
 
 const callbacks: Record<Projection, (image: HTMLImageElement) => void> = {
   Dymaxion: (image) => {
-    image.src = reproject(
-      image,
-      geoAirocean()
-        .scale(image.width / (2 * Math.PI))
-        .translate([image.width / 2, image.height / 2]),
-    ).toDataURL();
+    image.src = reproject(image, geoAirocean()).toDataURL();
   },
   'Gall-Peters': (image) => {
-    image.src = reproject(
-      image,
-      geoCylindricalEqualArea()
-        .parallel(45)
-        .scale(image.width / (2 * Math.PI))
-        .translate([image.width / 2, image.height / 2]),
-    ).toDataURL();
+    image.src = reproject(image, geoCylindricalEqualArea().parallel(45)).toDataURL();
   },
   'Goode Homolosine': (image) => {
-    image.src = reproject(
-      image,
-      geoInterruptedHomolosine()
-        .scale(image.width / (2 * Math.PI))
-        .translate([image.width / 2, image.height / 2]),
-    ).toDataURL();
+    image.src = reproject(image, geoInterruptedHomolosine()).toDataURL();
   },
   'Hobo-Dyer': (_image) => {
     console.warn('Hobo-Dyer projection not yet implemented');
@@ -146,31 +167,20 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => void> = {
     console.warn('Peirce Quincuncial projection not yet implemented');
   },
   'Plate Carrée (Equirectangular)': (image) => {
-    image.src = reproject(
-      image,
-      geoEquirectangular()
-        .scale(image.width / (2 * Math.PI))
-        .translate([image.width / 2, image.height / 2]),
-    ).toDataURL();
+    image.src = reproject(image, geoEquirectangular()).toDataURL();
   },
   Robinson: (image) => {
-    image.src = reproject(
-      image,
-      geoRobinson()
-        .scale(image.width / (2 * Math.PI))
-        .translate([image.width / 2, image.height / 2]),
-    ).toDataURL();
+    console.log(`Input image: ${image.width}x${image.height}, natural: ${image.naturalWidth}x${image.naturalHeight}`);
+    const canvas = reproject(image, geoRobinson());
+    console.log(`Before setting src - image dimensions: ${image.width}x${image.height}`);
+    image.src = canvas.toDataURL();
+    console.log(`After setting src - image dimensions: ${image.width}x${image.height}`);
   },
   'Van der Grinten': (_image) => {
     console.warn('Van der Grinten projection not yet implemented');
   },
   'Waterman Butterfly': (image) => {
-    image.src = reproject(
-      image,
-      geoPolyhedralWaterman()
-        .scale(image.width / (2 * Math.PI))
-        .translate([image.width / 2, image.height / 2]),
-    ).toDataURL();
+    image.src = reproject(image, geoPolyhedralWaterman()).toDataURL();
   },
   'Winkel-Tripel': (_image) => {
     console.warn('Winkel-Tripel projection not yet implemented');
