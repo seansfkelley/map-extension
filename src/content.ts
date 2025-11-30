@@ -7,6 +7,7 @@ import {
   geoPolyhedralWaterman,
 } from 'd3-geo-projection';
 import { geoAirocean } from 'd3-geo-polygon';
+import { bilinearInterpolate } from './bilinear-interpolation';
 
 function assert(condition: unknown, message?: string): asserts condition {
   if (!condition) {
@@ -133,17 +134,25 @@ function reproject(
           const sourcePixel = mercator(lonLat);
 
           if (sourcePixel != null) {
-            const sx = Math.round(sourcePixel[0]);
-            const sy = Math.round(sourcePixel[1]);
+            const sx = sourcePixel[0];
+            const sy = sourcePixel[1];
 
+            // Check if the fractional coordinates are within bounds
             if (sx >= 0 && sx < sourceWidth && sy >= 0 && sy < sourceHeight) {
-              const sourceIdx = (sy * sourceWidth + sx) * 4;
-              const destIdx = (y * destWidth + x) * 4;
+              // Use bilinear interpolation to blend adjacent pixels
+              const [r, g, b, a] = bilinearInterpolate(
+                sourceData,
+                sourceWidth,
+                sourceHeight,
+                sx,
+                sy,
+              );
 
-              destData.data[destIdx] = sourceData.data[sourceIdx];
-              destData.data[destIdx + 1] = sourceData.data[sourceIdx + 1];
-              destData.data[destIdx + 2] = sourceData.data[sourceIdx + 2];
-              destData.data[destIdx + 3] = sourceData.data[sourceIdx + 3];
+              const destIdx = (y * destWidth + x) * 4;
+              destData.data[destIdx] = r;
+              destData.data[destIdx + 1] = g;
+              destData.data[destIdx + 2] = b;
+              destData.data[destIdx + 3] = a;
             }
           }
         }
