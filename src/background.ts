@@ -1,30 +1,15 @@
-interface MenuCallbacks {
-  [title: string]: (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => void;
-}
+import { PROJECTIONS } from './types';
 
-const menuCallbacks: MenuCallbacks = {
-  'Analyze Image': (info, tab) => {
-    console.log('Analyze image clicked:', info.srcUrl, tab?.id);
-  },
-  'Convert Projection': (info, tab) => {
-    console.log('Convert projection clicked:', info.srcUrl, tab?.id);
-  },
-  'Extract Coordinates': (info, tab) => {
-    console.log('Extract coordinates clicked:', info.srcUrl, tab?.id);
-  },
-};
-
-for (const title of Object.keys(menuCallbacks)) {
+for (const projection of PROJECTIONS) {
   chrome.contextMenus.create({
-    id: title,
-    title,
+    id: projection,
+    title: projection,
     contexts: ['image'],
   });
 }
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  const callback = menuCallbacks[info.menuItemId as string];
-  if (callback) {
-    callback(info, tab);
+  if (tab?.id != null) {
+    chrome.tabs.sendMessage(tab.id, { projection: info.menuItemId });
   }
 });
