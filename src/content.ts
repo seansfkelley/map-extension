@@ -33,8 +33,13 @@ function reproject(
 
   assert(westEdge != null && eastEdge != null && northPole != null && southPole != null);
 
-  const destWidth = Math.ceil(eastEdge[0] - westEdge[0]);
-  const destHeight = Math.ceil(southPole[1] - northPole[1]);
+  const minX = westEdge[0];
+  const maxX = eastEdge[0];
+  const minY = northPole[1];
+  const maxY = southPole[1];
+
+  const destWidth = Math.ceil(maxX - minX);
+  const destHeight = Math.ceil(maxY - minY);
 
   const mercator = geoMercator()
     .scale(sourceWidth / (2 * Math.PI))
@@ -60,23 +65,38 @@ function reproject(
 
   for (let y = 0; y < destHeight; y++) {
     for (let x = 0; x < destWidth; x++) {
-      const lonLat = destProjection.invert([x, y]);
+      const destPixel: [number, number] = [x + minX, y + minY];
+      const lonLat = destProjection.invert(destPixel);
 
-      if (lonLat != null) {
-        const sourcePixel = mercator(lonLat);
+      if (
+        lonLat != null &&
+        lonLat[0] >= -180 &&
+        lonLat[0] <= 180 &&
+        lonLat[1] >= -90 &&
+        lonLat[1] <= 90
+      ) {
+        // Verify this pixel is actually within the projection bounds
+        const verifyPixel = destProjection(lonLat);
+        if (
+          verifyPixel != null &&
+          Math.abs(verifyPixel[0] - destPixel[0]) < 0.5 &&
+          Math.abs(verifyPixel[1] - destPixel[1]) < 0.5
+        ) {
+          const sourcePixel = mercator(lonLat);
 
-        if (sourcePixel != null) {
-          const sx = Math.round(sourcePixel[0]);
-          const sy = Math.round(sourcePixel[1]);
+          if (sourcePixel != null) {
+            const sx = Math.round(sourcePixel[0]);
+            const sy = Math.round(sourcePixel[1]);
 
-          if (sx >= 0 && sx < sourceWidth && sy >= 0 && sy < sourceHeight) {
-            const sourceIdx = (sy * sourceWidth + sx) * 4;
-            const destIdx = (y * destWidth + x) * 4;
+            if (sx >= 0 && sx < sourceWidth && sy >= 0 && sy < sourceHeight) {
+              const sourceIdx = (sy * sourceWidth + sx) * 4;
+              const destIdx = (y * destWidth + x) * 4;
 
-            destData.data[destIdx] = sourceData.data[sourceIdx];
-            destData.data[destIdx + 1] = sourceData.data[sourceIdx + 1];
-            destData.data[destIdx + 2] = sourceData.data[sourceIdx + 2];
-            destData.data[destIdx + 3] = sourceData.data[sourceIdx + 3];
+              destData.data[destIdx] = sourceData.data[sourceIdx];
+              destData.data[destIdx + 1] = sourceData.data[sourceIdx + 1];
+              destData.data[destIdx + 2] = sourceData.data[sourceIdx + 2];
+              destData.data[destIdx + 3] = sourceData.data[sourceIdx + 3];
+            }
           }
         }
       }
