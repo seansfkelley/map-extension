@@ -1,3 +1,4 @@
+- add icons
 - add remaining projections
 - test all projections
 - unit tests possible? visual tests?
