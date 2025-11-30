@@ -1,6 +1,12 @@
 import type { ExtensionMessage, Projection } from './types';
-import { geoMercator } from 'd3-geo';
-import { geoRobinson } from 'd3-geo-projection';
+import { geoMercator, type GeoProjection } from 'd3-geo';
+import { geoRobinson, geoCylindricalEqualArea } from 'd3-geo-projection';
+
+function assert(condition: unknown, message?: string): asserts condition {
+  if (!condition) {
+    throw new Error(message ?? 'Assertion failed');
+  }
+}
 
 let lastContextMenuTarget: HTMLImageElement | undefined;
 
@@ -10,16 +16,17 @@ document.addEventListener('contextmenu', (event) => {
   }
 });
 
-function reprojectToRobinson(sourceImage: HTMLImageElement): HTMLCanvasElement {
+function reproject(
+  sourceImage: HTMLImageElement,
+  destProjection: GeoProjection,
+): HTMLCanvasElement {
+  assert(destProjection.invert != null, 'projection must support inversion');
+
   const width = sourceImage.naturalWidth || sourceImage.width;
   const height = sourceImage.naturalHeight || sourceImage.height;
 
   const mercator = geoMercator()
     .scale(width / (2 * Math.PI))
-    .translate([width / 2, height / 2]);
-
-  const robinson = geoRobinson()
-    .scale(width / 5.332539516)
     .translate([width / 2, height / 2]);
 
   const sourceCanvas = document.createElement('canvas');
@@ -40,7 +47,7 @@ function reprojectToRobinson(sourceImage: HTMLImageElement): HTMLCanvasElement {
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const lonLat = robinson.invert([x, y]);
+      const lonLat = destProjection.invert([x, y]);
 
       if (lonLat != null) {
         const sourcePixel = mercator(lonLat);
@@ -69,11 +76,21 @@ function reprojectToRobinson(sourceImage: HTMLImageElement): HTMLCanvasElement {
 
 const callbacks: Record<Projection, (image: HTMLImageElement) => void> = {
   Robinson: (image) => {
-    const canvas = reprojectToRobinson(image);
-    image.src = canvas.toDataURL();
+    image.src = reproject(
+      image,
+      geoRobinson()
+        .scale(image.width / (2 * Math.PI))
+        .translate([image.width / 2, image.height / 2]),
+    ).toDataURL();
   },
   'Gall-Peters': (image) => {
-    console.log('Converting to Gall-Peters projection:', image);
+    image.src = reproject(
+      image,
+      geoCylindricalEqualArea()
+        .parallel(45)
+        .scale(image.width / (2 * Math.PI))
+        .translate([image.width / 2, image.height / 2]),
+    ).toDataURL();
   },
 };
 
