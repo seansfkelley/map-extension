@@ -9,7 +9,7 @@ export const _projections = [
   'Plate Carrée (Equirectangular)',
   'Waterman Butterfly',
   'Gall-Peters',
-  'Peirce Quincunial',
+  'Peirce Quincuncial',
 ] as const;
 export const PROJECTIONS = _projections as readonly Projection[];
 export type Projection = (typeof _projections)[number];

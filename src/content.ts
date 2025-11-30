@@ -114,10 +114,10 @@ function reproject(
 }
 
 const callbacks: Record<Projection, (image: HTMLImageElement) => void> = {
-  Robinson: (image) => {
+  Dymaxion: (image) => {
     image.src = reproject(
       image,
-      geoRobinson()
+      geoAirocean()
         .scale(image.width / (2 * Math.PI))
         .translate([image.width / 2, image.height / 2]),
     ).toDataURL();
@@ -139,13 +139,30 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => void> = {
         .translate([image.width / 2, image.height / 2]),
     ).toDataURL();
   },
-  Equirectangular: (image) => {
+  'Hobo-Dyer': (_image) => {
+    console.warn('Hobo-Dyer projection not yet implemented');
+  },
+  'Peirce Quincuncial': (_image) => {
+    console.warn('Peirce Quincuncial projection not yet implemented');
+  },
+  'Plate Carrée (Equirectangular)': (image) => {
     image.src = reproject(
       image,
       geoEquirectangular()
         .scale(image.width / (2 * Math.PI))
         .translate([image.width / 2, image.height / 2]),
     ).toDataURL();
+  },
+  Robinson: (image) => {
+    image.src = reproject(
+      image,
+      geoRobinson()
+        .scale(image.width / (2 * Math.PI))
+        .translate([image.width / 2, image.height / 2]),
+    ).toDataURL();
+  },
+  'Van der Grinten': (_image) => {
+    console.warn('Van der Grinten projection not yet implemented');
   },
   'Waterman Butterfly': (image) => {
     image.src = reproject(
@@ -155,13 +172,8 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => void> = {
         .translate([image.width / 2, image.height / 2]),
     ).toDataURL();
   },
-  Dymaxion: (image) => {
-    image.src = reproject(
-      image,
-      geoAirocean()
-        .scale(image.width / (2 * Math.PI))
-        .translate([image.width / 2, image.height / 2]),
-    ).toDataURL();
+  'Winkel-Tripel': (_image) => {
+    console.warn('Winkel-Tripel projection not yet implemented');
   },
 };
 
