@@ -22,17 +22,30 @@ function reproject(
 ): HTMLCanvasElement {
   assert(destProjection.invert != null, 'projection must support inversion');
 
-  const width = sourceImage.naturalWidth || sourceImage.width;
-  const height = sourceImage.naturalHeight || sourceImage.height;
+  const sourceWidth = sourceImage.naturalWidth || sourceImage.width;
+  const sourceHeight = sourceImage.naturalHeight || sourceImage.height;
+
+  // Calculate destination bounds from projection
+  const westEdge = destProjection([-180, 0]);
+  const eastEdge = destProjection([180, 0]);
+  const northPole = destProjection([0, 90]);
+  const southPole = destProjection([0, -90]);
+
+  assert(westEdge != null && eastEdge != null && northPole != null && southPole != null);
+
+  const destWidth = Math.ceil(eastEdge[0] - westEdge[0]);
+  const destHeight = Math.ceil(southPole[1] - northPole[1]);
 
   const mercator = geoMercator()
-    .scale(width / (2 * Math.PI))
-    .translate([width / 2, height / 2]);
+    .scale(sourceWidth / (2 * Math.PI))
+    .translate([sourceWidth / 2, sourceHeight / 2]);
 
   const sourceCanvas = document.createElement('canvas');
   const destCanvas = document.createElement('canvas');
-  sourceCanvas.width = destCanvas.width = width;
-  sourceCanvas.height = destCanvas.height = height;
+  sourceCanvas.width = sourceWidth;
+  sourceCanvas.height = sourceHeight;
+  destCanvas.width = destWidth;
+  destCanvas.height = destHeight;
 
   const sourceCtx = sourceCanvas.getContext('2d');
   const destCtx = destCanvas.getContext('2d');
@@ -41,12 +54,12 @@ function reproject(
     throw new Error('Failed to get canvas context');
   }
 
-  sourceCtx.drawImage(sourceImage, 0, 0, width, height);
-  const sourceData = sourceCtx.getImageData(0, 0, width, height);
-  const destData = destCtx.createImageData(width, height);
+  sourceCtx.drawImage(sourceImage, 0, 0, sourceWidth, sourceHeight);
+  const sourceData = sourceCtx.getImageData(0, 0, sourceWidth, sourceHeight);
+  const destData = destCtx.createImageData(destWidth, destHeight);
 
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
+  for (let y = 0; y < destHeight; y++) {
+    for (let x = 0; x < destWidth; x++) {
       const lonLat = destProjection.invert([x, y]);
 
       if (lonLat != null) {
@@ -56,9 +69,9 @@ function reproject(
           const sx = Math.round(sourcePixel[0]);
           const sy = Math.round(sourcePixel[1]);
 
-          if (sx >= 0 && sx < width && sy >= 0 && sy < height) {
-            const sourceIdx = (sy * width + sx) * 4;
-            const destIdx = (y * width + x) * 4;
+          if (sx >= 0 && sx < sourceWidth && sy >= 0 && sy < sourceHeight) {
+            const sourceIdx = (sy * sourceWidth + sx) * 4;
+            const destIdx = (y * destWidth + x) * 4;
 
             destData.data[destIdx] = sourceData.data[sourceIdx];
             destData.data[destIdx + 1] = sourceData.data[sourceIdx + 1];
