@@ -2,7 +2,7 @@
   "name": "map-extension",
   "version": "1.0.0",
   "scripts": {
-    "build": "esbuild src/content.ts --bundle --outfile=dist/content.js",
+    "build": "esbuild src/content.ts --bundle --outfile=dist/content.js && esbuild src/background.ts --bundle --outfile=dist/background.js",
     "package": "npm run build && zip -r extension.zip manifest.json dist/",
     "test": "jest",
     "lint": "eslint src",
