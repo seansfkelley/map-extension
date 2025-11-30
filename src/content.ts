@@ -22,9 +22,19 @@ document.addEventListener('contextmenu', (event) => {
   }
 });
 
+// Key boundary points: [lon, lat] coordinates that define projection extremes
+// Most projections: poles give vertical extremes, antimeridian gives horizontal extremes
+const DEFAULT_BOUNDS: Array<[number, number]> = [
+  [0, 90], // North pole (top)
+  [0, -90], // South pole (bottom)
+  [-180, 0], // West edge (left)
+  [180, 0], // East edge (right)
+];
+
 function reproject(
   sourceImage: HTMLImageElement,
   destProjection: GeoProjection,
+  boundsPoints: Array<[number, number]> = DEFAULT_BOUNDS,
 ): HTMLCanvasElement {
   assert(destProjection.invert != null, 'projection must support inversion');
 
@@ -38,16 +48,14 @@ function reproject(
   let minY = Infinity;
   let maxY = -Infinity;
 
-  // Sample points across the globe to find the actual bounds
-  for (let lat = -90; lat <= 90; lat += 10) {
-    for (let lon = -180; lon <= 180; lon += 10) {
-      const point = unitProjection([lon, lat]);
-      if (point != null) {
-        minX = Math.min(minX, point[0]);
-        maxX = Math.max(maxX, point[0]);
-        minY = Math.min(minY, point[1]);
-        maxY = Math.max(maxY, point[1]);
-      }
+  // Check boundary points to find extremes
+  for (const [lon, lat] of boundsPoints) {
+    const point = unitProjection([lon, lat]);
+    if (point != null && isFinite(point[0]) && isFinite(point[1])) {
+      minX = Math.min(minX, point[0]);
+      maxX = Math.max(maxX, point[0]);
+      minY = Math.min(minY, point[1]);
+      maxY = Math.max(maxY, point[1]);
     }
   }
 
@@ -170,7 +178,9 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => void> = {
     image.src = reproject(image, geoEquirectangular()).toDataURL();
   },
   Robinson: (image) => {
-    console.log(`Input image: ${image.width}x${image.height}, natural: ${image.naturalWidth}x${image.naturalHeight}`);
+    console.log(
+      `Input image: ${image.width}x${image.height}, natural: ${image.naturalWidth}x${image.naturalHeight}`,
+    );
     const canvas = reproject(image, geoRobinson());
     console.log(`Before setting src - image dimensions: ${image.width}x${image.height}`);
     image.src = canvas.toDataURL();

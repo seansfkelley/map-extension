@@ -2,7 +2,7 @@
 - add remaining projections
 - test all projections
 - unit tests possible? visual tests?
-- DRY up scale factors if possible
 - antialiasing -- sample multiple pixels near source pixel and weight them accordingly?
 - look into other projections not from xkcd
 - manually clean up `reproject` cause it looks kinda fishy
+- add spinner for slow calculations
