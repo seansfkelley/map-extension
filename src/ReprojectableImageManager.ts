@@ -27,15 +27,15 @@ export class ReprojectionOperation {
     this.subtitle.textContent = `${Math.round(fraction * 100)}%`;
   }
 
-  public tryComplete(): void {
+  public completeIfNotAborted(): void {
     if (!this.completed && !this.abortController.signal.aborted) {
       this.onComplete();
-      this.completed = false;
+      this.completed = true;
     }
   }
 }
 
-export class ConversionStateManager {
+export class ReprojectableImageManager {
   private originalImageSrc: string;
   private imageElement: HTMLImageElement;
   private previousImageSrc: string;
@@ -56,28 +56,19 @@ export class ConversionStateManager {
     this.previousImageSrc = this.imageElement.src;
   }
 
-  public startReprojection(): ReprojectionOperation {
+  public startReprojectionOperation(): ReprojectionOperation {
     assert(this.currentOperation == null, 'cannot start an operation if one is in progress');
 
     this.maybeInitialize();
     this.assertInitialized();
-    this.showIndicator();
+    this.showSpinner();
 
     this.previousImageSrc = this.imageElement.src;
 
     this.currentOperation = new ReprojectionOperation(this.subtitle!, this.originalImageSrc, () => {
-      this.assertInitialized();
       this.currentOperation = undefined;
-
-      this.spinner!.remove();
-      this.cancelIcon!.remove();
-      this.container!.insertBefore(this.revertIcon!, this.subtitle!);
-      this.subtitle!.textContent = 'Revert';
+      this.showRevertButton();
     });
-
-    this.revertIcon!.remove();
-    this.container!.insertBefore(this.spinner!, this.subtitle!);
-    this.container!.insertBefore(this.cancelIcon!, this.subtitle!);
 
     return this.currentOperation;
   }
@@ -91,10 +82,14 @@ export class ConversionStateManager {
       return;
     }
 
-    const overlay = getOverlaySingleton();
-
     this.container = document.createElement('div');
     this.container.className = 'mercator-shmercator-container';
+
+    this.subtitle = document.createElement('div');
+    this.subtitle.className = 'mercator-shmercator-subtitle';
+
+    this.container.appendChild(this.subtitle);
+    getOverlaySingleton().appendChild(this.container);
 
     this.spinner = document.createElement('div');
     this.spinner.className = 'mercator-shmercator-spinner';
@@ -104,19 +99,15 @@ export class ConversionStateManager {
     this.cancelIcon.addEventListener('click', () => {
       assert(this.currentOperation != null, 'cannot cancel if no operation is in progress');
       this.currentOperation.abortController.abort();
+      this.currentOperation = undefined;
+
       this.imageElement.src = this.previousImageSrc;
       if (this.previousImageSrc === this.originalImageSrc) {
-        this.hideIndicator();
+        this.hide();
+      } else {
+        this.showRevertButton();
       }
     });
-
-    this.subtitle = document.createElement('div');
-    this.subtitle.className = 'mercator-shmercator-subtitle';
-
-    this.container.appendChild(this.spinner);
-    this.container.appendChild(this.cancelIcon);
-    this.container.appendChild(this.subtitle);
-    overlay.appendChild(this.container);
 
     this.revertIcon = document.createElement('div');
     this.revertIcon.className = 'mercator-shmercator-revert-icon';
@@ -124,24 +115,41 @@ export class ConversionStateManager {
     this.revertIcon.addEventListener('click', () => {
       assert(this.currentOperation == null, 'cannot revert if an operation is in progress');
       this.imageElement.src = this.originalImageSrc;
-      this.hideIndicator();
+      this.hide();
     });
 
     this.isInitialized = true;
   }
 
-  private showIndicator(): void {
+  private showSpinner(): void {
     this.assertInitialized();
 
-    assert(this.container != null, 'container must exist');
-    this.container.style.display = ''; // empty string = do whatever the CSS says
+    this.container!.style.display = ''; // empty string = do whatever the CSS says
+    this.revertIcon!.remove();
+    this.container!.insertBefore(this.spinner!, this.subtitle!);
+    this.container!.insertBefore(this.cancelIcon!, this.subtitle!);
+    this.subtitle!.textContent = '0%';
 
     clearInterval(this.updateInterval);
     this.updatePosition();
     this.updateInterval = window.setInterval(() => this.updatePosition(), 100);
   }
 
-  private hideIndicator(): void {
+  private showRevertButton() {
+    this.assertInitialized();
+
+    this.container!.style.display = ''; // empty string = do whatever the CSS says
+    this.spinner!.remove();
+    this.cancelIcon!.remove();
+    this.container!.insertBefore(this.revertIcon!, this.subtitle!);
+    this.subtitle!.textContent = 'Revert';
+
+    clearInterval(this.updateInterval);
+    this.updatePosition();
+    this.updateInterval = window.setInterval(() => this.updatePosition(), 100);
+  }
+
+  private hide(): void {
     this.assertInitialized();
 
     assert(this.container != null, 'container must exist');

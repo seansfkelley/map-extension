@@ -35,8 +35,6 @@
   border-top-color: rgba(255, 255, 255, 0.8);
   border-radius: 50%;
   animation: mercator-shmercator-spin 0.8s linear infinite;
-  position: relative;
-  cursor: pointer;
 }
 
 @keyframes mercator-shmercator-spin {
@@ -45,9 +43,21 @@
   }
 }
 
-/* X icon that appears on hover */
-.mercator-shmercator-spinner::before,
-.mercator-shmercator-spinner::after {
+/* Cancel icon (X) */
+.mercator-shmercator-cancel-icon {
+  width: 18px;
+  height: 18px;
+  position: relative;
+  cursor: pointer;
+  display: none;
+}
+
+.mercator-shmercator-container:hover .mercator-shmercator-cancel-icon {
+  display: block;
+}
+
+.mercator-shmercator-cancel-icon::before,
+.mercator-shmercator-cancel-icon::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -55,26 +65,18 @@
   width: 10px;
   height: 2px;
   background: rgba(255, 255, 255, 0.9);
-  opacity: 0;
-  transition: opacity 0.2s ease;
 }
 
-.mercator-shmercator-spinner::before {
+.mercator-shmercator-cancel-icon::before {
   transform: translate(-50%, -50%) rotate(45deg);
 }
 
-.mercator-shmercator-spinner::after {
+.mercator-shmercator-cancel-icon::after {
   transform: translate(-50%, -50%) rotate(-45deg);
 }
 
-.mercator-shmercator-container:hover .mercator-shmercator-spinner::before,
-.mercator-shmercator-container:hover .mercator-shmercator-spinner::after {
-  opacity: 1;
-}
-
 .mercator-shmercator-container:hover .mercator-shmercator-spinner {
-  border-color: transparent;
-  animation: none;
+  display: none;
 }
 
 .mercator-shmercator-subtitle {
@@ -95,6 +97,11 @@
   border-radius: 50%;
   position: relative;
   cursor: pointer;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.mercator-shmercator-revert-icon:hover {
+  border-color: rgba(255, 255, 255, 1);
 }
 
 .mercator-shmercator-revert-icon::before {
@@ -108,6 +115,12 @@
   border-left: 1.5px solid rgba(255, 255, 255, 0.8);
   transform: translate(-50%, -50%) rotate(-45deg);
   transform-origin: center;
+  transition: border-color 0.2s ease;
+}
+
+.mercator-shmercator-revert-icon:hover::before {
+  border-top-color: rgba(255, 255, 255, 1);
+  border-left-color: rgba(255, 255, 255, 1);
 }
 
 .mercator-shmercator-revert-icon::after {
@@ -120,14 +133,10 @@
   border-top: 1.5px solid rgba(255, 255, 255, 0.8);
   border-right: 1.5px solid rgba(255, 255, 255, 0.8);
   transform: rotate(-45deg);
+  transition: border-color 0.2s ease;
 }
 
-/* Completed state */
-.mercator-shmercator-container.mercator-shmercator-completed {
-  opacity: 0.5;
-  cursor: pointer;
-}
-
-.mercator-shmercator-container.mercator-shmercator-completed:hover {
-  opacity: 0.8;
+.mercator-shmercator-revert-icon:hover::after {
+  border-top-color: rgba(255, 255, 255, 1);
+  border-right-color: rgba(255, 255, 255, 1);
 }

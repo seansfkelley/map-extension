@@ -8,7 +8,7 @@ import {
 } from 'd3-geo-projection';
 import { geoAirocean } from 'd3-geo-polygon';
 import { bilinearInterpolate } from './bilinear-interpolation';
-import { ConversionStateManager } from './ConversionStateManager';
+import { ReprojectableImageManager } from './ReprojectableImageManager';
 import { assert } from './util';
 
 let lastContextMenuTarget: HTMLImageElement | undefined;
@@ -164,7 +164,7 @@ async function* reproject(
   yield { canvas: destCanvas, pixelsCalculated, totalPixels };
 }
 
-const managers = new WeakMap<HTMLImageElement, ConversionStateManager>();
+const managers = new WeakMap<HTMLImageElement, ReprojectableImageManager>();
 
 async function reprojectWithProgress(
   image: HTMLImageElement,
@@ -172,7 +172,7 @@ async function reprojectWithProgress(
   boundsPoints?: Array<[number, number]>,
 ): Promise<void> {
   if (!managers.has(image)) {
-    managers.set(image, new ConversionStateManager(image));
+    managers.set(image, new ReprojectableImageManager(image));
   }
 
   const manager = managers.get(image);
@@ -181,7 +181,7 @@ async function reprojectWithProgress(
   const transientSourceImage = new Image();
   transientSourceImage.crossOrigin = image.crossOrigin;
 
-  const operation = manager.startReprojection();
+  const operation = manager.startReprojectionOperation();
 
   await new Promise<void>((resolve, reject) => {
     transientSourceImage.onload = () => resolve();
@@ -202,7 +202,7 @@ async function reprojectWithProgress(
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
-  operation.tryComplete();
+  operation.completeIfNotAborted();
 }
 
 const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> = {
