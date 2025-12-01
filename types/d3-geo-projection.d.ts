@@ -7,4 +7,7 @@ declare module 'd3-geo-projection' {
   };
   export function geoInterruptedHomolosine(): GeoProjection;
   export function geoPolyhedralWaterman(): GeoProjection;
+  export function geoPeirceQuincuncial(): GeoProjection;
+  export function geoVanDerGrinten(): GeoProjection;
+  export function geoWinkel3(): GeoProjection;
 }

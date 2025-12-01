@@ -5,6 +5,9 @@ import {
   geoCylindricalEqualArea,
   geoInterruptedHomolosine,
   geoPolyhedralWaterman,
+  geoPeirceQuincuncial,
+  geoVanDerGrinten,
+  geoWinkel3,
 } from 'd3-geo-projection';
 import { geoAirocean } from 'd3-geo-polygon';
 import { bilinearInterpolate } from './bilinearInterpolate';
@@ -19,7 +22,7 @@ document.addEventListener('contextmenu', (event) => {
   }
 });
 
-const CYLINDRICAL_CRITICAL_POINTS: LonLat[] = [
+const STANDARD_CRITICAL_POINTS: LonLat[] = [
   LonLat.of(0, 90), // north pole
   LonLat.of(0, -90), // south pole
   LonLat.of(-180, 0), // antimeridian (west)
@@ -74,7 +77,10 @@ async function* reproject(
   const naturalWidth = maxX - minX;
   const naturalHeight = maxY - minY;
 
-  assert(naturalWidth > 0 && naturalHeight > 0, 'invalid natural dimensions');
+  assert(naturalWidth > 0 && naturalHeight > 0, 'invalid natural dimensions', {
+    naturalWidth,
+    naturalHeight,
+  });
 
   const sourceWidth = sourceImage.naturalWidth || sourceImage.width;
   const sourceHeight = sourceImage.naturalHeight || sourceImage.height;
@@ -244,26 +250,36 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> 
     await reprojectIncrementally(
       image,
       geoCylindricalEqualArea().parallel(45),
-      CYLINDRICAL_CRITICAL_POINTS,
+      STANDARD_CRITICAL_POINTS,
     );
   },
   'Goode Homolosine': async (image) => {
-    await reprojectIncrementally(image, geoInterruptedHomolosine(), CYLINDRICAL_CRITICAL_POINTS);
+    await reprojectIncrementally(image, geoInterruptedHomolosine(), STANDARD_CRITICAL_POINTS);
   },
-  'Hobo-Dyer': async (_image) => {
-    console.warn('Hobo-Dyer projection not yet implemented');
+  'Hobo-Dyer': async (image) => {
+    await reprojectIncrementally(
+      image,
+      geoCylindricalEqualArea().parallel(37.5),
+      STANDARD_CRITICAL_POINTS,
+    );
   },
-  'Peirce Quincuncial': async (_image) => {
-    console.warn('Peirce Quincuncial projection not yet implemented');
+  'Peirce Quincuncial': async (image) => {
+    await reprojectIncrementally(image, geoPeirceQuincuncial(), [
+      // The four midpoints of the square's edges are at the equator on these meridians.
+      LonLat.of(0, 0),
+      LonLat.of(90, 0),
+      LonLat.of(180, 0),
+      LonLat.of(-90, 0),
+    ]);
   },
   'Plate Carrée (Equirectangular)': async (image) => {
-    await reprojectIncrementally(image, geoEquirectangular(), CYLINDRICAL_CRITICAL_POINTS);
+    await reprojectIncrementally(image, geoEquirectangular(), STANDARD_CRITICAL_POINTS);
   },
   Robinson: async (image) => {
-    await reprojectIncrementally(image, geoRobinson(), CYLINDRICAL_CRITICAL_POINTS);
+    await reprojectIncrementally(image, geoRobinson(), STANDARD_CRITICAL_POINTS);
   },
-  'Van der Grinten': async (_image) => {
-    console.warn('Van der Grinten projection not yet implemented');
+  'Van der Grinten': async (image) => {
+    await reprojectIncrementally(image, geoVanDerGrinten(), STANDARD_CRITICAL_POINTS);
   },
   'Waterman Butterfly': async (image) => {
     await reprojectIncrementally(image, geoPolyhedralWaterman(), [
@@ -285,8 +301,8 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> 
       LonLat.of(180, 0),
     ]);
   },
-  'Winkel-Tripel': async (_image) => {
-    console.warn('Winkel-Tripel projection not yet implemented');
+  'Winkel-Tripel': async (image) => {
+    await reprojectIncrementally(image, geoWinkel3(), STANDARD_CRITICAL_POINTS);
   },
 };
 
