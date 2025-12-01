@@ -110,14 +110,36 @@ async function* reproject(
 
   for (let y = 0; y < destHeight; y++) {
     for (let x = 0; x < destWidth; x++) {
-      const destPixel: [number, number] = [x, y];
-      const lonLat = destProjection.invert(destPixel);
+      const destinationCoordinates: [number, number] = [x, y];
+      const lonLat = destProjection.invert(destinationCoordinates);
 
       if (lonLat == null) {
         continue;
       }
 
-      const reprojectedPixel = destProjection(lonLat);
+      const sourceCoordinates = mercator(lonLat);
+      if (
+        sourceCoordinates == null ||
+        sourceCoordinates[0] < 0 ||
+        sourceCoordinates[1] >= sourceWidth ||
+        sourceCoordinates[1] < 0 ||
+        sourceCoordinates[1] >= sourceHeight
+      ) {
+        // The scale seems to assume that we're working with a cropped Mercator. Indeed, if you look
+        // at most images, they either truncate Greenland or show very little ocean above it,
+        // meaning they're dropping map near the poles where the Mercator projection gets _really_
+        // extraordinarily degenerate. Since saner projections handle poles better, they may query
+        // for lon/lat around there, but the Mercator projection has nothing to provide (it's out of
+        // bounds of the original image).
+        //
+        // TODO: Is this actually the reason? It's a bit hard to tell.
+        //
+        // TODO: Is there a way we can do this more analytically, say by just looking at the lon/lat
+        // directly or by calling a function on the scale to ask if it's in bounds?
+        continue;
+      }
+
+      const reprojectedCoordinates = destProjection(lonLat);
       // If the reprojected pixel ends up more than a rounding error away from the desired location,
       // we are in a part of the image where the projection wraps around and would show duplicative
       // content, so leave it blank.
@@ -125,16 +147,19 @@ async function* reproject(
       // TODO: Is there a way to do this more analytically, instead of doubling the amount of math
       // we have to perform and by going in both directions?
       if (
-        reprojectedPixel == null ||
-        Math.abs(reprojectedPixel[0] - destPixel[0]) > 1e-6 ||
-        Math.abs(reprojectedPixel[1] - destPixel[1]) > 1e-6
+        reprojectedCoordinates == null ||
+        Math.abs(reprojectedCoordinates[0] - destinationCoordinates[0]) > 1e-6 ||
+        Math.abs(reprojectedCoordinates[1] - destinationCoordinates[1]) > 1e-6
       ) {
         continue;
       }
 
-      const sourcePixel = mercator(lonLat);
-      if (sourcePixel != null) {
-        const [r, g, b, a] = bilinearInterpolate(sourceData, sourcePixel[0], sourcePixel[1]);
+      if (sourceCoordinates != null) {
+        const [r, g, b, a] = bilinearInterpolate(
+          sourceData,
+          sourceCoordinates[0],
+          sourceCoordinates[1],
+        );
 
         const destIdx = (y * destWidth + x) * 4;
         destData.data[destIdx] = r;
