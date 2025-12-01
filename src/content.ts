@@ -8,6 +8,7 @@ import {
 } from 'd3-geo-projection';
 import { geoAirocean } from 'd3-geo-polygon';
 import { bilinearInterpolate } from './bilinear-interpolation';
+import { ProgressIndicator } from './progress-indicator';
 
 function assert(condition: unknown, message?: string): asserts condition {
   if (!condition) {
@@ -178,24 +179,35 @@ async function* reproject(
   yield { canvas: destCanvas, pixelsCalculated, totalPixels, elapsedMs, etaMs: 0 };
 }
 
+async function reprojectWithProgress(
+  image: HTMLImageElement,
+  projection: GeoProjection,
+  boundsPoints?: Array<[number, number]>,
+): Promise<void> {
+  const indicator = new ProgressIndicator();
+  indicator.show(image);
+  for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
+    image,
+    projection,
+    boundsPoints,
+  )) {
+    const percentage = (pixelsCalculated / totalPixels) * 100;
+    indicator.updateProgress(percentage);
+    image.src = canvas.toDataURL();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  indicator.complete();
+}
+
 const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> = {
   Dymaxion: async (image) => {
-    for await (const { canvas } of reproject(image, geoAirocean())) {
-      image.src = canvas.toDataURL();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
+    await reprojectWithProgress(image, geoAirocean());
   },
   'Gall-Peters': async (image) => {
-    for await (const { canvas } of reproject(image, geoCylindricalEqualArea().parallel(45))) {
-      image.src = canvas.toDataURL();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
+    await reprojectWithProgress(image, geoCylindricalEqualArea().parallel(45));
   },
   'Goode Homolosine': async (image) => {
-    for await (const { canvas } of reproject(image, geoInterruptedHomolosine())) {
-      image.src = canvas.toDataURL();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
+    await reprojectWithProgress(image, geoInterruptedHomolosine());
   },
   'Hobo-Dyer': async (_image) => {
     console.warn('Hobo-Dyer projection not yet implemented');
@@ -204,30 +216,16 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> 
     console.warn('Peirce Quincuncial projection not yet implemented');
   },
   'Plate Carrée (Equirectangular)': async (image) => {
-    for await (const { canvas } of reproject(image, geoEquirectangular())) {
-      image.src = canvas.toDataURL();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
+    await reprojectWithProgress(image, geoEquirectangular());
   },
   Robinson: async (image) => {
-    console.log(
-      `Input image: ${image.width}x${image.height}, natural: ${image.naturalWidth}x${image.naturalHeight}`,
-    );
-    for await (const { canvas } of reproject(image, geoRobinson())) {
-      console.log(`Before setting src - image dimensions: ${image.width}x${image.height}`);
-      image.src = canvas.toDataURL();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      console.log(`After setting src - image dimensions: ${image.width}x${image.height}`);
-    }
+    await reprojectWithProgress(image, geoRobinson());
   },
   'Van der Grinten': async (_image) => {
     console.warn('Van der Grinten projection not yet implemented');
   },
   'Waterman Butterfly': async (image) => {
-    for await (const { canvas } of reproject(image, geoPolyhedralWaterman())) {
-      image.src = canvas.toDataURL();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
+    await reprojectWithProgress(image, geoPolyhedralWaterman());
   },
   'Winkel-Tripel': async (_image) => {
     console.warn('Winkel-Tripel projection not yet implemented');
