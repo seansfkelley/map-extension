@@ -110,6 +110,10 @@ async function* reproject(
 
   for (let y = 0; y < destHeight; y++) {
     for (let x = 0; x < destWidth; x++) {
+      if (abortSignal.aborted) {
+        return;
+      }
+
       const destinationCoordinates: [number, number] = [x, y];
       const lonLat = destProjection.invert(destinationCoordinates);
 
@@ -173,10 +177,6 @@ async function* reproject(
 
     const currentTime = performance.now();
     if (currentTime - lastYieldTime >= 1000) {
-      if (abortSignal.aborted) {
-        return;
-      }
-
       destCtx.putImageData(destData, 0, 0);
       yield { canvas: destCanvas, pixelsCalculated, totalPixels };
       lastYieldTime = currentTime;
