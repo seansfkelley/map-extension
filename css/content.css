@@ -65,7 +65,6 @@
   }
 }
 
-/* Cancel icon (X) */
 .mercator-shmercator-cancel-icon {
   width: 18px;
   height: 18px;
@@ -108,7 +107,6 @@
   white-space: nowrap;
 }
 
-/* Revert icon (counterclockwise arrow) */
 .mercator-shmercator-revert-icon {
   width: 18px;
   height: 18px;

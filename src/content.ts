@@ -118,6 +118,8 @@ async function* reproject(
 
   for (let y = 0; y < destHeight; y++) {
     for (let x = 0; x < destWidth; x++) {
+      pixelsCalculated++;
+
       if (abortSignal.aborted) {
         return;
       }
@@ -178,8 +180,6 @@ async function* reproject(
         destImageData.data[destIdx + 2] = b;
         destImageData.data[destIdx + 3] = a;
       }
-
-      pixelsCalculated++;
     }
 
     const currentTime = performance.now();

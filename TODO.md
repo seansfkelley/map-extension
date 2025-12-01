@@ -1,7 +1,6 @@
 - add icons
 - add globe projection based on webgl
-- test all projections
-- unit tests possible? visual tests?
 - look into other projections not from xkcd
 - manually clean up `reproject` cause it looks kinda fishy
 - fix revert icon
+- visual tests?
