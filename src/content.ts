@@ -127,29 +127,8 @@ async function* reproject(
       const destinationCoordinates = PixelCoordinates.of(x, y);
       const lonLat = destProjection.invert(destinationCoordinates) as LonLat | null;
 
+      // The target projection doesn't have this point for one reason or another.
       if (lonLat == null) {
-        continue;
-      }
-
-      const sourceCoordinates = mercator(lonLat) as PixelCoordinates | null;
-      if (
-        sourceCoordinates == null ||
-        sourceCoordinates[0] < 0 ||
-        sourceCoordinates[1] >= sourceWidth ||
-        sourceCoordinates[1] < 0 ||
-        sourceCoordinates[1] >= sourceHeight
-      ) {
-        // The scale seems to assume that we're working with a cropped Mercator. Indeed, if you look
-        // at most images, they either truncate Greenland or show very little ocean above it,
-        // meaning they're dropping map near the poles where the Mercator projection gets _really_
-        // extraordinarily degenerate. Since saner projections handle poles better, they may query
-        // for lon/lat around there, but the Mercator projection has nothing to provide (it's out of
-        // bounds of the original image).
-        //
-        // TODO: Is this actually the reason? It's a bit hard to tell.
-        //
-        // TODO: Is there a way we can do this more analytically, say by just looking at the lon/lat
-        // directly or by calling a function on the scale to ask if it's in bounds?
         continue;
       }
 
@@ -158,8 +137,8 @@ async function* reproject(
       // we are in a part of the image where the projection wraps around and would show duplicative
       // content, so leave it blank.
       //
-      // Epsilon is REALLY big here instead of a more normal 1e-9 or smaller because Dymaxion is
-      // super noisy and would fail a tighter bound.
+      // Epsilon is REALLY big here instead of a more normal 1e-9 or smaller because Dymaxion has
+      // noisy calculations and would fail a tighter bound.
       //
       // TODO: Is there a way to do this more analytically, instead of doubling the amount of math
       // we have to perform and by going in both directions?
@@ -171,15 +150,34 @@ async function* reproject(
         continue;
       }
 
-      if (sourceCoordinates != null) {
-        const [r, g, b, a] = bilinearInterpolate(sourceImageData, sourceCoordinates);
-
-        const destIdx = (y * destWidth + x) * 4;
-        destImageData.data[destIdx] = r;
-        destImageData.data[destIdx + 1] = g;
-        destImageData.data[destIdx + 2] = b;
-        destImageData.data[destIdx + 3] = a;
+      const sourceCoordinates = mercator(lonLat) as PixelCoordinates | null;
+      if (sourceCoordinates == null) {
+        // The scale seems to assume that we're working with a cropped Mercator. Indeed, if you look
+        // at most images, they either truncate Greenland or show very little ocean above it,
+        // meaning they're dropping map near the poles where the Mercator projection gets _really_
+        // extraordinarily degenerate. Since saner projections handle poles better, they may query
+        // for lon/lat around there, but the Mercator projection has nothing to provide (it's out of
+        // bounds of the original image).
+        //
+        // Note that we only check for nullity. In the case where the projection wants something
+        // near the poles, it'll fall back onto interpolating from whatever nearest point does exist
+        // in the Mercator, which sometimes looks stupid (especially if the image has a border) but
+        // is probably (?) better than leaving that section totally blank.
+        //
+        // TODO: Is this actually the reason? It's a bit hard to tell.
+        //
+        // TODO: Is there a way we can do this more analytically, say by just looking at the lon/lat
+        // directly or by calling a function on the scale to ask if it's in bounds?
+        continue;
       }
+
+      const [r, g, b, a] = bilinearInterpolate(sourceImageData, sourceCoordinates);
+
+      const destIdx = (y * destWidth + x) * 4;
+      destImageData.data[destIdx] = r;
+      destImageData.data[destIdx + 1] = g;
+      destImageData.data[destIdx + 2] = b;
+      destImageData.data[destIdx + 3] = a;
     }
 
     const currentTime = performance.now();
