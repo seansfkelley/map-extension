@@ -33,6 +33,16 @@ const DYMAXION_CRITICAL_POINTS: LonLat[] = [
   LonLat.of(-179, -41), // max Y (top edge)
 ];
 
+function newCanvasAndContext(width: number, height: number) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  assert(context != null, 'canvas must have 2d context');
+
+  return [canvas, context] as const;
+}
+
 async function* reproject(
   sourceImage: HTMLImageElement,
   destProjection: GeoProjection,
@@ -44,9 +54,6 @@ async function* reproject(
   totalPixels: number;
 }> {
   assert(destProjection.invert != null, 'projection must support inversion');
-
-  const sourceWidth = sourceImage.naturalWidth || sourceImage.width;
-  const sourceHeight = sourceImage.naturalHeight || sourceImage.height;
 
   // First, find the natural bounds of the projection with unit scale
   const unitProjection = destProjection.scale(1).translate([0, 0]);
@@ -76,6 +83,9 @@ async function* reproject(
 
   assert(naturalWidth > 0 && naturalHeight > 0, 'invalid natural dimensions');
 
+  const sourceWidth = sourceImage.naturalWidth || sourceImage.width;
+  const sourceHeight = sourceImage.naturalHeight || sourceImage.height;
+
   // Calculate scale to fit the output within the source image width
   const scale = sourceWidth / naturalWidth;
   const destWidth = sourceWidth;
@@ -84,6 +94,7 @@ async function* reproject(
   // Reconfigure projection with proper scale and translate
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
+
   destProjection
     .scale(scale)
     .translate([destWidth / 2 - centerX * scale, destHeight / 2 - centerY * scale]);
@@ -92,21 +103,15 @@ async function* reproject(
     .scale(sourceWidth / (2 * Math.PI))
     .translate([sourceWidth / 2, sourceHeight / 2]);
 
-  const sourceCanvas = document.createElement('canvas');
-  const destCanvas = document.createElement('canvas');
-  sourceCanvas.width = sourceWidth;
-  sourceCanvas.height = sourceHeight;
-  destCanvas.width = destWidth;
-  destCanvas.height = destHeight;
+  // ugh, just want blocks-as-values
+  const sourceImageData = (() => {
+    const [, sourceCtx] = newCanvasAndContext(sourceWidth, sourceHeight);
+    sourceCtx.drawImage(sourceImage, 0, 0, sourceWidth, sourceHeight);
+    return sourceCtx.getImageData(0, 0, sourceWidth, sourceHeight);
+  })();
 
-  const sourceCtx = sourceCanvas.getContext('2d');
-  assert(sourceCtx != null, 'source canvas must have 2d context');
-  const destCtx = destCanvas.getContext('2d');
-  assert(destCtx != null, 'destination canvas must have 2d context');
-
-  sourceCtx.drawImage(sourceImage, 0, 0, sourceWidth, sourceHeight);
-  const sourceData = sourceCtx.getImageData(0, 0, sourceWidth, sourceHeight);
-  const destData = destCtx.createImageData(destWidth, destHeight);
+  const [destCanvas, destCtx] = newCanvasAndContext(destWidth, destHeight);
+  const destImageData = destCtx.createImageData(destWidth, destHeight);
 
   let lastYieldTime = performance.now();
   let pixelsCalculated = 0;
@@ -163,13 +168,13 @@ async function* reproject(
       }
 
       if (sourceCoordinates != null) {
-        const [r, g, b, a] = bilinearInterpolate(sourceData, sourceCoordinates);
+        const [r, g, b, a] = bilinearInterpolate(sourceImageData, sourceCoordinates);
 
         const destIdx = (y * destWidth + x) * 4;
-        destData.data[destIdx] = r;
-        destData.data[destIdx + 1] = g;
-        destData.data[destIdx + 2] = b;
-        destData.data[destIdx + 3] = a;
+        destImageData.data[destIdx] = r;
+        destImageData.data[destIdx + 1] = g;
+        destImageData.data[destIdx + 2] = b;
+        destImageData.data[destIdx + 3] = a;
       }
 
       pixelsCalculated++;
@@ -177,13 +182,13 @@ async function* reproject(
 
     const currentTime = performance.now();
     if (currentTime - lastYieldTime >= 1000) {
-      destCtx.putImageData(destData, 0, 0);
+      destCtx.putImageData(destImageData, 0, 0);
       yield { canvas: destCanvas, pixelsCalculated, totalPixels };
       lastYieldTime = currentTime;
     }
   }
 
-  destCtx.putImageData(destData, 0, 0);
+  destCtx.putImageData(destImageData, 0, 0);
   yield { canvas: destCanvas, pixelsCalculated, totalPixels };
 }
 
