@@ -124,7 +124,6 @@ function reproject(
         lonLat[1] >= -90 &&
         lonLat[1] <= 90
       ) {
-        // Verify this pixel is actually within the projection bounds
         const verifyPixel = destProjection(lonLat);
         if (
           verifyPixel != null &&
@@ -137,16 +136,8 @@ function reproject(
             const sx = sourcePixel[0];
             const sy = sourcePixel[1];
 
-            // Check if the fractional coordinates are within bounds
             if (sx >= 0 && sx < sourceWidth && sy >= 0 && sy < sourceHeight) {
-              // Use bilinear interpolation to blend adjacent pixels
-              const [r, g, b, a] = bilinearInterpolate(
-                sourceData,
-                sourceWidth,
-                sourceHeight,
-                sx,
-                sy,
-              );
+              const [r, g, b, a] = bilinearInterpolate(sourceData, sx, sy);
 
               const destIdx = (y * destWidth + x) * 4;
               destData.data[destIdx] = r;

@@ -1,4 +1,3 @@
-- read tests for bilinear interpolation
 - add icons
 - add remaining projections
 - test all projections
