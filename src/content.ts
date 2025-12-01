@@ -254,7 +254,35 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> 
     console.warn('Van der Grinten projection not yet implemented');
   },
   'Waterman Butterfly': async (image) => {
-    await reprojectWithProgress(image, geoPolyhedralWaterman());
+    // The Waterman butterfly projection is based on an octahedron unfolded into a butterfly shape.
+    // The polyhedral projection may not project the exact poles, so we sample near the south pole.
+    // We also sample the antimeridian around the equator to capture the horizontal extent.
+    const watermanBounds: Array<[number, number]> = [
+      // North pole
+      [0, 90],
+      // Points around 85 degrees south (near south pole)
+      [-180, -85],
+      [-135, -85],
+      [-90, -85],
+      [-45, -85],
+      [0, -85],
+      [45, -85],
+      [90, -85],
+      [135, -85],
+      [180, -85],
+      // Points on the antimeridian around the equator
+      [-180, -60],
+      [-180, -30],
+      [-180, 0],
+      [-180, 30],
+      [-180, 60],
+      [180, -60],
+      [180, -30],
+      [180, 0],
+      [180, 30],
+      [180, 60],
+    ];
+    await reprojectWithProgress(image, geoPolyhedralWaterman(), watermanBounds);
   },
   'Winkel-Tripel': async (_image) => {
     console.warn('Winkel-Tripel projection not yet implemented');
