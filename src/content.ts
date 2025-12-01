@@ -7,7 +7,7 @@ import {
   geoPolyhedralWaterman,
 } from 'd3-geo-projection';
 import { geoAirocean } from 'd3-geo-polygon';
-import { bilinearInterpolate } from './bilinear-interpolation';
+import { bilinearInterpolate } from './bilinearInterpolate';
 import { ReprojectableImageManager } from './ReprojectableImageManager';
 import { assert } from './util';
 
@@ -108,8 +108,7 @@ async function* reproject(
   const sourceData = sourceCtx.getImageData(0, 0, sourceWidth, sourceHeight);
   const destData = destCtx.createImageData(destWidth, destHeight);
 
-  const startTime = performance.now();
-  let lastYieldTime = startTime;
+  let lastYieldTime = performance.now();
   let pixelsCalculated = 0;
   const totalPixels = destWidth * destHeight;
 

@@ -1,4 +1,4 @@
-import { bilinearInterpolate, clamp } from '../src/bilinear-interpolation';
+import { bilinearInterpolate, clamp } from '../src/bilinearInterpolate';
 import { PixelCoordinates } from '../src/types';
 
 type Rgba = [number, number, number, number];
