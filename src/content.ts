@@ -36,7 +36,13 @@ async function* reproject(
   sourceImage: HTMLImageElement,
   destProjection: GeoProjection,
   boundsPoints: Array<[number, number]> = DEFAULT_BOUNDS,
-): AsyncGenerator<{ canvas: HTMLCanvasElement; pixelsCalculated: number }> {
+): AsyncGenerator<{
+  canvas: HTMLCanvasElement;
+  pixelsCalculated: number;
+  totalPixels: number;
+  elapsedMs: number;
+  etaMs: number;
+}> {
   assert(destProjection.invert != null, 'projection must support inversion');
 
   const sourceWidth = sourceImage.naturalWidth || sourceImage.width;
@@ -96,11 +102,9 @@ async function* reproject(
   destCanvas.height = destHeight;
 
   const sourceCtx = sourceCanvas.getContext('2d');
+  assert(sourceCtx != null, 'source canvas must have 2d context');
   const destCtx = destCanvas.getContext('2d');
-
-  if (sourceCtx == null || destCtx == null) {
-    throw new Error('Failed to get canvas context');
-  }
+  assert(destCtx != null, 'destination canvas must have 2d context');
 
   sourceCtx.drawImage(sourceImage, 0, 0, sourceWidth, sourceHeight);
   const sourceData = sourceCtx.getImageData(0, 0, sourceWidth, sourceHeight);
@@ -109,8 +113,8 @@ async function* reproject(
   const startTime = performance.now();
   let lastYieldTime = startTime;
   let pixelsCalculated = 0;
+  const totalPixels = destWidth * destHeight;
 
-  console.log('Starting reprojection loop...');
   for (let y = 0; y < destHeight; y++) {
     for (let x = 0; x < destWidth; x++) {
       const destPixel: [number, number] = [x, y];
@@ -123,11 +127,11 @@ async function* reproject(
         lonLat[1] >= -90 &&
         lonLat[1] <= 90
       ) {
-        const verifyPixel = destProjection(lonLat);
+        const projectedPixel = destProjection(lonLat);
         if (
-          verifyPixel != null &&
-          Math.abs(verifyPixel[0] - destPixel[0]) < 0.5 &&
-          Math.abs(verifyPixel[1] - destPixel[1]) < 0.5
+          projectedPixel != null &&
+          Math.abs(projectedPixel[0] - destPixel[0]) < 0.5 &&
+          Math.abs(projectedPixel[1] - destPixel[1]) < 0.5
         ) {
           const sourcePixel = mercator(lonLat);
 
@@ -155,21 +159,23 @@ async function* reproject(
     const currentTime = performance.now();
     if (currentTime - lastYieldTime >= 1000) {
       destCtx.putImageData(destData, 0, 0);
-      const elapsed = currentTime - startTime;
+      const elapsedMs = currentTime - startTime;
+      const pixelsRemaining = totalPixels - pixelsCalculated;
+      const pixelsPerMs = pixelsCalculated / elapsedMs;
+      const etaMs = pixelsPerMs > 0 ? pixelsRemaining / pixelsPerMs : 0;
       console.log(
-        `Progress: ${y + 1}/${destHeight} rows, ${pixelsCalculated} pixels (${elapsed.toFixed(0)}ms elapsed)`,
+        `Progress: ${y + 1}/${destHeight} rows, ${pixelsCalculated} pixels (${elapsedMs.toFixed(0)}ms elapsed, ${etaMs.toFixed(0)}ms ETA)`,
       );
-      yield { canvas: destCanvas, pixelsCalculated };
+      yield { canvas: destCanvas, pixelsCalculated, totalPixels, elapsedMs, etaMs };
       lastYieldTime = currentTime;
     }
   }
 
-  // Final yield with complete image
   destCtx.putImageData(destData, 0, 0);
   const endTime = performance.now();
-  console.log(`Reprojection complete in ${(endTime - startTime).toFixed(0)}ms`);
-  console.log(`Output canvas: ${destCanvas.width}x${destCanvas.height}`);
-  yield { canvas: destCanvas, pixelsCalculated };
+  const elapsedMs = endTime - startTime;
+  console.log(`Reprojection complete in ${elapsedMs.toFixed(0)}ms`);
+  yield { canvas: destCanvas, pixelsCalculated, totalPixels, elapsedMs, etaMs: 0 };
 }
 
 const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> = {
