@@ -26,13 +26,6 @@ const CYLINDRICAL_CRITICAL_POINTS: LonLat[] = [
   LonLat.of(180, 0), // antimerdian (east)
 ];
 
-const DYMAXION_CRITICAL_POINTS: LonLat[] = [
-  LonLat.of(39, -51), // min X (left edge)
-  LonLat.of(132, -52), // max X (right edge)
-  LonLat.of(10, -24), // min Y (bottom edge)
-  LonLat.of(-179, -41), // max Y (top edge)
-];
-
 function newCanvasAndContext(width: number, height: number) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -157,12 +150,15 @@ async function* reproject(
       // we are in a part of the image where the projection wraps around and would show duplicative
       // content, so leave it blank.
       //
+      // Epsilon is REALLY big here instead of a more normal 1e-9 or smaller because Dymaxion is
+      // super noisy and would fail a tighter bound.
+      //
       // TODO: Is there a way to do this more analytically, instead of doubling the amount of math
       // we have to perform and by going in both directions?
       if (
         reprojectedCoordinates == null ||
-        Math.abs(reprojectedCoordinates[0] - destinationCoordinates[0]) > 1e-6 ||
-        Math.abs(reprojectedCoordinates[1] - destinationCoordinates[1]) > 1e-6
+        Math.abs(reprojectedCoordinates[0] - destinationCoordinates[0]) > 1e-3 ||
+        Math.abs(reprojectedCoordinates[1] - destinationCoordinates[1]) > 1e-3
       ) {
         continue;
       }
@@ -235,7 +231,14 @@ async function reprojectIncrementally(
 
 const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> = {
   Dymaxion: async (image) => {
-    await reprojectIncrementally(image, geoAirocean(), DYMAXION_CRITICAL_POINTS);
+    await reprojectIncrementally(image, geoAirocean(), [
+      // Calculated empirically, based on the particulars of the projection d3 provides, since there
+      // are multiple layouts possible.
+      LonLat.of(39, -51), // min X
+      LonLat.of(132, -52), // max X
+      LonLat.of(10, -24), // min Y
+      LonLat.of(-179, -41), // max Y
+    ]);
   },
   'Gall-Peters': async (image) => {
     await reprojectIncrementally(
