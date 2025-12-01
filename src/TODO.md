@@ -1,7 +1,0 @@
-- add icons
-- add remaining projections
-- test all projections
-- unit tests possible? visual tests?
-- look into other projections not from xkcd
-- manually clean up `reproject` cause it looks kinda fishy
-- add spinner for slow calculations
