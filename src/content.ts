@@ -113,36 +113,34 @@ async function* reproject(
       const destPixel: [number, number] = [x, y];
       const lonLat = destProjection.invert(destPixel);
 
+      if (lonLat == null) {
+        continue;
+      }
+
+      const reprojectedPixel = destProjection(lonLat);
+      // If the reprojected pixel ends up more than a rounding error away from the desired location,
+      // we are in a part of the image where the projection wraps around and would show duplicative
+      // content, so leave it blank.
+      //
+      // TODO: Is there a way to do this more analytically, instead of doubling the amount of math
+      // we have to perform and by going in both directions?
       if (
-        lonLat != null &&
-        lonLat[0] >= -180 &&
-        lonLat[0] <= 180 &&
-        lonLat[1] >= -90 &&
-        lonLat[1] <= 90
+        reprojectedPixel == null ||
+        Math.abs(reprojectedPixel[0] - destPixel[0]) > 1e-6 ||
+        Math.abs(reprojectedPixel[1] - destPixel[1]) > 1e-6
       ) {
-        const projectedPixel = destProjection(lonLat);
-        if (
-          projectedPixel != null &&
-          Math.abs(projectedPixel[0] - destPixel[0]) < 0.5 &&
-          Math.abs(projectedPixel[1] - destPixel[1]) < 0.5
-        ) {
-          const sourcePixel = mercator(lonLat);
+        continue;
+      }
 
-          if (sourcePixel != null) {
-            const sx = sourcePixel[0];
-            const sy = sourcePixel[1];
+      const sourcePixel = mercator(lonLat);
+      if (sourcePixel != null) {
+        const [r, g, b, a] = bilinearInterpolate(sourceData, sourcePixel[0], sourcePixel[1]);
 
-            if (sx >= 0 && sx < sourceWidth && sy >= 0 && sy < sourceHeight) {
-              const [r, g, b, a] = bilinearInterpolate(sourceData, sx, sy);
-
-              const destIdx = (y * destWidth + x) * 4;
-              destData.data[destIdx] = r;
-              destData.data[destIdx + 1] = g;
-              destData.data[destIdx + 2] = b;
-              destData.data[destIdx + 3] = a;
-            }
-          }
-        }
+        const destIdx = (y * destWidth + x) * 4;
+        destData.data[destIdx] = r;
+        destData.data[destIdx + 1] = g;
+        destData.data[destIdx + 2] = b;
+        destData.data[destIdx + 3] = a;
       }
 
       pixelsCalculated++;
