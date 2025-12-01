@@ -51,14 +51,12 @@ async function* reproject(
 }> {
   assert(destProjection.invert != null, 'projection must support inversion');
 
-  // First, find the natural bounds of the projection with unit scale
   const unitProjection = destProjection.scale(1).translate([0, 0]);
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
   let maxY = -Infinity;
 
-  // Check boundary points to find extremes
   for (const [lon, lat] of boundsSamplingPoints) {
     const point = unitProjection([lon, lat]);
     if (point != null && isFinite(point[0]) && isFinite(point[1])) {
@@ -85,18 +83,16 @@ async function* reproject(
   const sourceWidth = sourceImage.naturalWidth || sourceImage.width;
   const sourceHeight = sourceImage.naturalHeight || sourceImage.height;
 
-  // Calculate scale to fit the output within the source image width
   const scale = sourceWidth / naturalWidth;
   const destWidth = sourceWidth;
   const destHeight = Math.ceil(naturalHeight * scale);
 
-  // Reconfigure projection with proper scale and translate
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
-
   destProjection
     .scale(scale)
-    .translate([destWidth / 2 - centerX * scale, destHeight / 2 - centerY * scale]);
+    .translate([
+      destWidth / 2 - scale * ((minX + maxX) / 2),
+      destHeight / 2 - scale * ((minY + maxY) / 2),
+    ]);
 
   const mercator = geoMercator()
     .scale(sourceWidth / (2 * Math.PI))
