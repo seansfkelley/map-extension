@@ -32,11 +32,11 @@ const DEFAULT_BOUNDS: Array<[number, number]> = [
   [180, 0], // East edge (right)
 ];
 
-function reproject(
+async function* reproject(
   sourceImage: HTMLImageElement,
   destProjection: GeoProjection,
   boundsPoints: Array<[number, number]> = DEFAULT_BOUNDS,
-): HTMLCanvasElement {
+): AsyncGenerator<{ canvas: HTMLCanvasElement; pixelsCalculated: number }> {
   assert(destProjection.invert != null, 'projection must support inversion');
 
   const sourceWidth = sourceImage.naturalWidth || sourceImage.width;
@@ -107,12 +107,11 @@ function reproject(
   const destData = destCtx.createImageData(destWidth, destHeight);
 
   const startTime = performance.now();
+  let lastYieldTime = startTime;
+  let pixelsCalculated = 0;
+
   console.log('Starting reprojection loop...');
   for (let y = 0; y < destHeight; y++) {
-    if (y % 100 === 0) {
-      const elapsed = performance.now() - startTime;
-      console.log(`Progress: ${y}/${destHeight} (${elapsed.toFixed(0)}ms elapsed)`);
-    }
     for (let x = 0; x < destWidth; x++) {
       const destPixel: [number, number] = [x, y];
       const lonLat = destProjection.invert(destPixel);
@@ -148,51 +147,83 @@ function reproject(
           }
         }
       }
+
+      pixelsCalculated++;
+    }
+
+    // Yield after completing a row, but only if approximately 1 second has elapsed
+    const currentTime = performance.now();
+    if (currentTime - lastYieldTime >= 1000) {
+      destCtx.putImageData(destData, 0, 0);
+      const elapsed = currentTime - startTime;
+      console.log(
+        `Progress: ${y + 1}/${destHeight} rows, ${pixelsCalculated} pixels (${elapsed.toFixed(0)}ms elapsed)`,
+      );
+      yield { canvas: destCanvas, pixelsCalculated };
+      lastYieldTime = currentTime;
     }
   }
 
+  // Final yield with complete image
   destCtx.putImageData(destData, 0, 0);
   const endTime = performance.now();
   console.log(`Reprojection complete in ${(endTime - startTime).toFixed(0)}ms`);
   console.log(`Output canvas: ${destCanvas.width}x${destCanvas.height}`);
-  return destCanvas;
+  yield { canvas: destCanvas, pixelsCalculated };
 }
 
-const callbacks: Record<Projection, (image: HTMLImageElement) => void> = {
-  Dymaxion: (image) => {
-    image.src = reproject(image, geoAirocean()).toDataURL();
+const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> = {
+  Dymaxion: async (image) => {
+    for await (const { canvas } of reproject(image, geoAirocean())) {
+      image.src = canvas.toDataURL();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   },
-  'Gall-Peters': (image) => {
-    image.src = reproject(image, geoCylindricalEqualArea().parallel(45)).toDataURL();
+  'Gall-Peters': async (image) => {
+    for await (const { canvas } of reproject(image, geoCylindricalEqualArea().parallel(45))) {
+      image.src = canvas.toDataURL();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   },
-  'Goode Homolosine': (image) => {
-    image.src = reproject(image, geoInterruptedHomolosine()).toDataURL();
+  'Goode Homolosine': async (image) => {
+    for await (const { canvas } of reproject(image, geoInterruptedHomolosine())) {
+      image.src = canvas.toDataURL();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   },
-  'Hobo-Dyer': (_image) => {
+  'Hobo-Dyer': async (_image) => {
     console.warn('Hobo-Dyer projection not yet implemented');
   },
-  'Peirce Quincuncial': (_image) => {
+  'Peirce Quincuncial': async (_image) => {
     console.warn('Peirce Quincuncial projection not yet implemented');
   },
-  'Plate Carrée (Equirectangular)': (image) => {
-    image.src = reproject(image, geoEquirectangular()).toDataURL();
+  'Plate Carrée (Equirectangular)': async (image) => {
+    for await (const { canvas } of reproject(image, geoEquirectangular())) {
+      image.src = canvas.toDataURL();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   },
-  Robinson: (image) => {
+  Robinson: async (image) => {
     console.log(
       `Input image: ${image.width}x${image.height}, natural: ${image.naturalWidth}x${image.naturalHeight}`,
     );
-    const canvas = reproject(image, geoRobinson());
-    console.log(`Before setting src - image dimensions: ${image.width}x${image.height}`);
-    image.src = canvas.toDataURL();
-    console.log(`After setting src - image dimensions: ${image.width}x${image.height}`);
+    for await (const { canvas } of reproject(image, geoRobinson())) {
+      console.log(`Before setting src - image dimensions: ${image.width}x${image.height}`);
+      image.src = canvas.toDataURL();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      console.log(`After setting src - image dimensions: ${image.width}x${image.height}`);
+    }
   },
-  'Van der Grinten': (_image) => {
+  'Van der Grinten': async (_image) => {
     console.warn('Van der Grinten projection not yet implemented');
   },
-  'Waterman Butterfly': (image) => {
-    image.src = reproject(image, geoPolyhedralWaterman()).toDataURL();
+  'Waterman Butterfly': async (image) => {
+    for await (const { canvas } of reproject(image, geoPolyhedralWaterman())) {
+      image.src = canvas.toDataURL();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   },
-  'Winkel-Tripel': (_image) => {
+  'Winkel-Tripel': async (_image) => {
     console.warn('Winkel-Tripel projection not yet implemented');
   },
 };
