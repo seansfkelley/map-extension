@@ -37,8 +37,6 @@ async function* reproject(
   canvas: HTMLCanvasElement;
   pixelsCalculated: number;
   totalPixels: number;
-  elapsedMs: number;
-  etaMs: number;
 }> {
   assert(destProjection.invert != null, 'projection must support inversion');
 
@@ -157,19 +155,13 @@ async function* reproject(
       }
 
       destCtx.putImageData(destData, 0, 0);
-      const elapsedMs = currentTime - startTime;
-      const pixelsRemaining = totalPixels - pixelsCalculated;
-      const pixelsPerMs = pixelsCalculated / elapsedMs;
-      const etaMs = pixelsPerMs > 0 ? pixelsRemaining / pixelsPerMs : 0;
-      yield { canvas: destCanvas, pixelsCalculated, totalPixels, elapsedMs, etaMs };
+      yield { canvas: destCanvas, pixelsCalculated, totalPixels };
       lastYieldTime = currentTime;
     }
   }
 
   destCtx.putImageData(destData, 0, 0);
-  const endTime = performance.now();
-  const elapsedMs = endTime - startTime;
-  yield { canvas: destCanvas, pixelsCalculated, totalPixels, elapsedMs, etaMs: 0 };
+  yield { canvas: destCanvas, pixelsCalculated, totalPixels };
 }
 
 async function reprojectWithProgress(
@@ -190,6 +182,8 @@ async function reprojectWithProgress(
       const percentage = (pixelsCalculated / totalPixels) * 100;
       indicator.updateProgress(percentage);
       image.src = canvas.toDataURL();
+      // release to the event loop to prevent the browser from completely locking up and to permit
+      // the user to hit the cancel button
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
     indicator.complete();
