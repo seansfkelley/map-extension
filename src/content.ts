@@ -1,4 +1,4 @@
-import type { ExtensionMessage, Projection } from './types';
+import { type ExtensionMessage, LonLat, PixelCoordinates, type Projection } from './types';
 import { geoMercator, geoEquirectangular, type GeoProjection } from 'd3-geo';
 import {
   geoRobinson,
@@ -13,8 +13,6 @@ import { assert } from './util';
 
 let lastContextMenuTarget: HTMLImageElement | undefined;
 
-type LonLat = [lon: number, lat: number];
-
 document.addEventListener('contextmenu', (event) => {
   if (event.target instanceof HTMLImageElement) {
     lastContextMenuTarget = event.target;
@@ -22,10 +20,17 @@ document.addEventListener('contextmenu', (event) => {
 });
 
 const CYLINDRICAL_CRITICAL_POINTS: LonLat[] = [
-  [0, 90], // north pole
-  [0, -90], // south pole
-  [-180, 0], // antimeridian (west)
-  [180, 0], // antimerdian (east)
+  LonLat.of(0, 90), // north pole
+  LonLat.of(0, -90), // south pole
+  LonLat.of(-180, 0), // antimeridian (west)
+  LonLat.of(180, 0), // antimerdian (east)
+];
+
+const DYMAXION_CRITICAL_POINTS: LonLat[] = [
+  LonLat.of(39, -51), // min X (left edge)
+  LonLat.of(132, -52), // max X (right edge)
+  LonLat.of(10, -24), // min Y (bottom edge)
+  LonLat.of(-179, -41), // max Y (top edge)
 ];
 
 async function* reproject(
@@ -114,14 +119,14 @@ async function* reproject(
         return;
       }
 
-      const destinationCoordinates: [number, number] = [x, y];
-      const lonLat = destProjection.invert(destinationCoordinates);
+      const destinationCoordinates = PixelCoordinates.of(x, y);
+      const lonLat = destProjection.invert(destinationCoordinates) as LonLat | null;
 
       if (lonLat == null) {
         continue;
       }
 
-      const sourceCoordinates = mercator(lonLat);
+      const sourceCoordinates = mercator(lonLat) as PixelCoordinates | null;
       if (
         sourceCoordinates == null ||
         sourceCoordinates[0] < 0 ||
@@ -143,7 +148,7 @@ async function* reproject(
         continue;
       }
 
-      const reprojectedCoordinates = destProjection(lonLat);
+      const reprojectedCoordinates = destProjection(lonLat) as PixelCoordinates | null;
       // If the reprojected pixel ends up more than a rounding error away from the desired location,
       // we are in a part of the image where the projection wraps around and would show duplicative
       // content, so leave it blank.
@@ -159,11 +164,7 @@ async function* reproject(
       }
 
       if (sourceCoordinates != null) {
-        const [r, g, b, a] = bilinearInterpolate(
-          sourceData,
-          sourceCoordinates[0],
-          sourceCoordinates[1],
-        );
+        const [r, g, b, a] = bilinearInterpolate(sourceData, sourceCoordinates);
 
         const destIdx = (y * destWidth + x) * 4;
         destData.data[destIdx] = r;
@@ -230,8 +231,7 @@ async function reprojectIncrementally(
 
 const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> = {
   Dymaxion: async (image) => {
-    // TODO
-    await reprojectIncrementally(image, geoAirocean(), CYLINDRICAL_CRITICAL_POINTS);
+    await reprojectIncrementally(image, geoAirocean(), DYMAXION_CRITICAL_POINTS);
   },
   'Gall-Peters': async (image) => {
     await reprojectIncrementally(
@@ -264,18 +264,18 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> 
       // chosen because the variation we use does not go all the way to the pole.
       //
       // South pole points, which dictate the left, right and bottom edges.
-      [-180, -85],
-      [-135, -85],
-      [-90, -85],
-      [-45, -85],
-      [0, -85],
-      [45, -85],
-      [90, -85],
-      [135, -85],
-      [180, -85],
+      LonLat.of(-180, -85),
+      LonLat.of(-135, -85),
+      LonLat.of(-90, -85),
+      LonLat.of(-45, -85),
+      LonLat.of(0, -85),
+      LonLat.of(45, -85),
+      LonLat.of(90, -85),
+      LonLat.of(135, -85),
+      LonLat.of(180, -85),
       // Antimeridian points near the equator, which dictate the top edge.
-      [-180, 0],
-      [180, 0],
+      LonLat.of(-180, 0),
+      LonLat.of(180, 0),
     ]);
   },
   'Winkel-Tripel': async (_image) => {

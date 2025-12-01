@@ -1,4 +1,5 @@
 import { bilinearInterpolate, clamp } from '../src/bilinear-interpolation';
+import { PixelCoordinates } from '../src/types';
 
 type Rgba = [number, number, number, number];
 
@@ -51,19 +52,19 @@ describe(bilinearInterpolate, () => {
   it('should return exact pixel value when coordinates are integers', () => {
     const imageData = makeImage(2, 2, [RED, GREEN, BLUE, YELLOW]);
 
-    expect(bilinearInterpolate(imageData, 0, 0)).toEqual(RED);
-    expect(bilinearInterpolate(imageData, 1, 0)).toEqual(GREEN);
-    expect(bilinearInterpolate(imageData, 0, 1)).toEqual(BLUE);
-    expect(bilinearInterpolate(imageData, 1, 1)).toEqual(YELLOW);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(0, 0))).toEqual(RED);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(1, 0))).toEqual(GREEN);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(0, 1))).toEqual(BLUE);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(1, 1))).toEqual(YELLOW);
   });
 
   it('should clamp sampling coordinates to the nearest in-bounds coordinate', () => {
     const imageData = makeImage(2, 2, [RED, GREEN, BLUE, YELLOW]);
 
-    expect(bilinearInterpolate(imageData, -0.5, 0)).toEqual(RED);
-    expect(bilinearInterpolate(imageData, 2.5, 0)).toEqual(GREEN);
-    expect(bilinearInterpolate(imageData, 0, -0.5)).toEqual(RED);
-    expect(bilinearInterpolate(imageData, 0, 2.5)).toEqual(BLUE);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(-0.5, 0))).toEqual(RED);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(2.5, 0))).toEqual(GREEN);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(0, -0.5))).toEqual(RED);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(0, 2.5))).toEqual(BLUE);
   });
 
   it('should interpolate alpha channel independently', () => {
@@ -71,24 +72,30 @@ describe(bilinearInterpolate, () => {
       [255, 0, 0, 0],
       [255, 0, 0, 255],
     ]);
-    expect(bilinearInterpolate(imageData, 0.5, 0)).toEqual([255, 0, 0, 128]);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(0.5, 0))).toEqual([255, 0, 0, 128]);
   });
 
   it('should blend 50/50 horizontally at x.5 positions', () => {
     const imageData = makeImage(2, 1, [BLACK, WHITE]);
-    expect(bilinearInterpolate(imageData, 0.5, 0)).toEqual([128, 128, 128, 255]);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(0.5, 0))).toEqual([
+      128, 128, 128, 255,
+    ]);
   });
 
   it('should blend 50/50 vertically at y.5 positions', () => {
     const imageData = makeImage(1, 2, [BLACK, WHITE]);
-    expect(bilinearInterpolate(imageData, 0, 0.5)).toEqual([128, 128, 128, 255]);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(0, 0.5))).toEqual([
+      128, 128, 128, 255,
+    ]);
   });
 
   it('should blend all four corners at (0.5, 0.5)', () => {
     const imageData = makeImage(2, 2, [BLACK, [100, 100, 100, 255], [200, 200, 200, 255], WHITE]);
 
     // (0 + 100 + 200 + 255) / 4 = 138.75 ~= 139
-    expect(bilinearInterpolate(imageData, 0.5, 0.5)).toEqual([139, 139, 139, 255]);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(0.5, 0.5))).toEqual([
+      139, 139, 139, 255,
+    ]);
   });
 
   it('should weight pixels according to distance at (0.25, 0.75)', () => {
@@ -97,11 +104,15 @@ describe(bilinearInterpolate, () => {
     // At (0.25, 0.75): close to top-left horizontally, far vertically
     // weight for (0,0) = (1-0.25) * (1-0.75) = 0.75 * 0.25 = 0.1875
     // All other corners are black, so result = 255 * 0.1875 ~= 48
-    expect(bilinearInterpolate(imageData, 0.25, 0.75)).toEqual([48, 48, 48, 255]);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(0.25, 0.75))).toEqual([
+      48, 48, 48, 255,
+    ]);
   });
 
   it('should blend arbitrary colors channel-independently', () => {
     const imageData = makeImage(2, 2, [WHITE, RED, YELLOW, BLACK]);
-    expect(bilinearInterpolate(imageData, 0.5, 0.5)).toEqual([191, 128, 64, 255]);
+    expect(bilinearInterpolate(imageData, PixelCoordinates.of(0.5, 0.5))).toEqual([
+      191, 128, 64, 255,
+    ]);
   });
 });

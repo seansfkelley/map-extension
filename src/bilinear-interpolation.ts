@@ -1,3 +1,5 @@
+import { PixelCoordinates } from './types';
+
 export type Rgba = [number, number, number, number];
 
 export function clamp(value: number, min: number, max: number): number {
@@ -9,8 +11,7 @@ export function clamp(value: number, min: number, max: number): number {
 // n.b. This uses graphics coordinate systems, where (0, 0) is the top left.
 export function bilinearInterpolate(
   { data, width, height }: Pick<ImageData, 'data' | 'width' | 'height'>,
-  x: number,
-  y: number,
+  [x, y]: PixelCoordinates,
 ): Rgba {
   const x0 = Math.floor(x);
   const x1 = x0 + 1;
