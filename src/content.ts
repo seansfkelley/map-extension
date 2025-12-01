@@ -164,17 +164,39 @@ async function* reproject(
   yield { canvas: destCanvas, pixelsCalculated, totalPixels };
 }
 
+const originalImageSources = new WeakMap<HTMLImageElement, string>();
+const activeIndicators = new WeakMap<HTMLImageElement, ProgressIndicator>();
+
 async function reprojectWithProgress(
   image: HTMLImageElement,
   projection: GeoProjection,
   boundsPoints?: Array<[number, number]>,
 ): Promise<void> {
+  activeIndicators.get(image)?.destroy();
+
+  if (!originalImageSources.has(image)) {
+    originalImageSources.set(image, image.src);
+  }
+
+  const originalSrc = originalImageSources.get(image);
+  assert(originalSrc != null, 'original image source must be stored');
+
+  const transientSourceImage = new Image();
+  transientSourceImage.crossOrigin = image.crossOrigin;
+
+  await new Promise<void>((resolve, reject) => {
+    transientSourceImage.onload = () => resolve();
+    transientSourceImage.onerror = () => reject(new Error('failed to load original image'));
+    transientSourceImage.src = originalSrc;
+  });
+
   const indicator = new ProgressIndicator(image);
+  activeIndicators.set(image, indicator);
   indicator.show();
 
   try {
     for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
-      image,
+      transientSourceImage,
       projection,
       indicator.getAbortSignal(),
       boundsPoints,

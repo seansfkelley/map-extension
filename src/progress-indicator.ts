@@ -11,11 +11,13 @@ function getOverlaySingleton(): HTMLDivElement {
   return overlaySingleton;
 }
 
+type InitializationState = 'uninitialized' | 'initialized' | 'destroyed';
+
 export class ProgressIndicator {
   private targetImage: HTMLImageElement;
   private originalImageSrc: string;
   private abortController: AbortController = new AbortController();
-  private destroyed = false;
+  private state: InitializationState = 'uninitialized';
 
   private container: HTMLDivElement | undefined;
   private spinner: HTMLDivElement | undefined;
@@ -28,11 +30,14 @@ export class ProgressIndicator {
   }
 
   private assertNotDestroyed() {
-    assert(!this.destroyed, 'cannot modify a destroyed progress indicator');
+    assert(this.state !== 'destroyed', 'cannot modify a destroyed progress indicator');
   }
 
-  show(): void {
+  private maybeInitialize() {
     this.assertNotDestroyed();
+    if (this.state === 'initialized') {
+      return;
+    }
 
     const overlay = getOverlaySingleton();
 
@@ -60,8 +65,25 @@ export class ProgressIndicator {
       this.destroy();
     });
 
+    this.state = 'initialized';
+  }
+
+  show(): void {
+    this.assertNotDestroyed();
+    this.maybeInitialize();
+
     this.updatePosition();
     this.updateInterval = window.setInterval(() => this.updatePosition(), 100);
+
+    assert(this.container != null, 'container must exist after being initialized');
+    // empty string = do whatever the CSS says
+    this.container.style.display = '';
+  }
+
+  hide(): void {
+    this.assertNotDestroyed();
+    assert(this.container != null, 'container must exist after being initialized');
+    this.container.style.display = 'none';
   }
 
   getAbortSignal(): AbortSignal {
@@ -109,10 +131,10 @@ export class ProgressIndicator {
   }
 
   public destroy(): void {
-    if (this.destroyed === true) {
+    if (this.state === 'destroyed') {
       return;
     }
-    this.destroyed = true;
+    this.state = 'destroyed';
 
     if (this.updateInterval != null) {
       clearInterval(this.updateInterval);
@@ -131,8 +153,6 @@ export class ProgressIndicator {
 
     const rect = this.targetImage.getBoundingClientRect();
 
-    // Position in top-right corner with some padding
-    // Use pageXOffset/pageYOffset to account for scroll position
     const left = window.pageXOffset + rect.right - this.container.offsetWidth - 8;
     const top = window.pageYOffset + rect.top + 8;
 
