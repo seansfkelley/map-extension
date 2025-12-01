@@ -13,26 +13,26 @@ import { assert } from './util';
 
 let lastContextMenuTarget: HTMLImageElement | undefined;
 
+type LonLat = [lon: number, lat: number];
+
 document.addEventListener('contextmenu', (event) => {
   if (event.target instanceof HTMLImageElement) {
     lastContextMenuTarget = event.target;
   }
 });
 
-// Key boundary points: [lon, lat] coordinates that define projection extremes
-// Most projections: poles give vertical extremes, antimeridian gives horizontal extremes
-const DEFAULT_BOUNDS: Array<[number, number]> = [
-  [0, 90], // North pole (top)
-  [0, -90], // South pole (bottom)
-  [-180, 0], // West edge (left)
-  [180, 0], // East edge (right)
+const CYLINDRICAL_CRITICAL_POINTS: LonLat[] = [
+  [0, 90], // north pole
+  [0, -90], // south pole
+  [-180, 0], // antimeridian (west)
+  [180, 0], // antimerdian (east)
 ];
 
 async function* reproject(
   sourceImage: HTMLImageElement,
   destProjection: GeoProjection,
   abortSignal: AbortSignal,
-  boundsPoints: Array<[number, number]> = DEFAULT_BOUNDS,
+  boundsSamplingPoints: LonLat[],
 ): AsyncGenerator<{
   canvas: HTMLCanvasElement;
   pixelsCalculated: number;
@@ -51,7 +51,7 @@ async function* reproject(
   let maxY = -Infinity;
 
   // Check boundary points to find extremes
-  for (const [lon, lat] of boundsPoints) {
+  for (const [lon, lat] of boundsSamplingPoints) {
     const point = unitProjection([lon, lat]);
     if (point != null && isFinite(point[0]) && isFinite(point[1])) {
       minX = Math.min(minX, point[0]);
@@ -189,10 +189,10 @@ async function* reproject(
 
 const managers = new WeakMap<HTMLImageElement, ReprojectableImageManager>();
 
-async function reprojectWithProgress(
+async function reprojectIncrementally(
   image: HTMLImageElement,
   projection: GeoProjection,
-  boundsPoints?: Array<[number, number]>,
+  boundsSamplingPoints: LonLat[],
 ): Promise<void> {
   if (!managers.has(image)) {
     managers.set(image, new ReprojectableImageManager(image));
@@ -216,7 +216,7 @@ async function reprojectWithProgress(
     transientSourceImage,
     projection,
     operation.abortController.signal,
-    boundsPoints,
+    boundsSamplingPoints,
   )) {
     operation.updateProgress(pixelsCalculated / totalPixels);
     image.src = canvas.toDataURL();
@@ -230,13 +230,18 @@ async function reprojectWithProgress(
 
 const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> = {
   Dymaxion: async (image) => {
-    await reprojectWithProgress(image, geoAirocean());
+    // TODO
+    await reprojectIncrementally(image, geoAirocean(), CYLINDRICAL_CRITICAL_POINTS);
   },
   'Gall-Peters': async (image) => {
-    await reprojectWithProgress(image, geoCylindricalEqualArea().parallel(45));
+    await reprojectIncrementally(
+      image,
+      geoCylindricalEqualArea().parallel(45),
+      CYLINDRICAL_CRITICAL_POINTS,
+    );
   },
   'Goode Homolosine': async (image) => {
-    await reprojectWithProgress(image, geoInterruptedHomolosine());
+    await reprojectIncrementally(image, geoInterruptedHomolosine(), CYLINDRICAL_CRITICAL_POINTS);
   },
   'Hobo-Dyer': async (_image) => {
     console.warn('Hobo-Dyer projection not yet implemented');
@@ -245,22 +250,20 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> 
     console.warn('Peirce Quincuncial projection not yet implemented');
   },
   'Plate Carrée (Equirectangular)': async (image) => {
-    await reprojectWithProgress(image, geoEquirectangular());
+    await reprojectIncrementally(image, geoEquirectangular(), CYLINDRICAL_CRITICAL_POINTS);
   },
   Robinson: async (image) => {
-    await reprojectWithProgress(image, geoRobinson());
+    await reprojectIncrementally(image, geoRobinson(), CYLINDRICAL_CRITICAL_POINTS);
   },
   'Van der Grinten': async (_image) => {
     console.warn('Van der Grinten projection not yet implemented');
   },
   'Waterman Butterfly': async (image) => {
-    // The Waterman butterfly projection is based on an octahedron unfolded into a butterfly shape.
-    // The polyhedral projection may not project the exact poles, so we sample near the south pole.
-    // We also sample the antimeridian around the equator to capture the horizontal extent.
-    const watermanBounds: Array<[number, number]> = [
-      // North pole
-      [0, 90],
-      // Points around 85 degrees south (near south pole)
+    await reprojectIncrementally(image, geoPolyhedralWaterman(), [
+      // There are variants of this projection, specifically around the south pole; these points are
+      // chosen because the variation we use does not go all the way to the pole.
+      //
+      // South pole points, which dictate the left, right and bottom edges.
       [-180, -85],
       [-135, -85],
       [-90, -85],
@@ -270,19 +273,10 @@ const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> 
       [90, -85],
       [135, -85],
       [180, -85],
-      // Points on the antimeridian around the equator
-      [-180, -60],
-      [-180, -30],
+      // Antimeridian points near the equator, which dictate the top edge.
       [-180, 0],
-      [-180, 30],
-      [-180, 60],
-      [180, -60],
-      [180, -30],
       [180, 0],
-      [180, 30],
-      [180, 60],
-    ];
-    await reprojectWithProgress(image, geoPolyhedralWaterman(), watermanBounds);
+    ]);
   },
   'Winkel-Tripel': async (_image) => {
     console.warn('Winkel-Tripel projection not yet implemented');
