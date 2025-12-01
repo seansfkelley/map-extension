@@ -8,7 +8,7 @@ import {
 } from 'd3-geo-projection';
 import { geoAirocean } from 'd3-geo-polygon';
 import { bilinearInterpolate } from './bilinear-interpolation';
-import { ProgressIndicator } from './progress-indicator';
+import { ConversionStateManager } from './ConversionStateManager';
 import { assert } from './util';
 
 let lastContextMenuTarget: HTMLImageElement | undefined;
@@ -164,55 +164,45 @@ async function* reproject(
   yield { canvas: destCanvas, pixelsCalculated, totalPixels };
 }
 
-const originalImageSources = new WeakMap<HTMLImageElement, string>();
-const activeIndicators = new WeakMap<HTMLImageElement, ProgressIndicator>();
+const managers = new WeakMap<HTMLImageElement, ConversionStateManager>();
 
 async function reprojectWithProgress(
   image: HTMLImageElement,
   projection: GeoProjection,
   boundsPoints?: Array<[number, number]>,
 ): Promise<void> {
-  activeIndicators.get(image)?.destroy();
-
-  if (!originalImageSources.has(image)) {
-    originalImageSources.set(image, image.src);
+  if (!managers.has(image)) {
+    managers.set(image, new ConversionStateManager(image));
   }
 
-  const originalSrc = originalImageSources.get(image);
-  assert(originalSrc != null, 'original image source must be stored');
+  const manager = managers.get(image);
+  assert(manager != null, 'original image source must be stored');
 
   const transientSourceImage = new Image();
   transientSourceImage.crossOrigin = image.crossOrigin;
 
+  const operation = manager.startReprojection();
+
   await new Promise<void>((resolve, reject) => {
     transientSourceImage.onload = () => resolve();
     transientSourceImage.onerror = () => reject(new Error('failed to load original image'));
-    transientSourceImage.src = originalSrc;
+    transientSourceImage.src = operation.originalImageSrc;
   });
 
-  const indicator = new ProgressIndicator(image);
-  activeIndicators.set(image, indicator);
-  indicator.show();
-
-  try {
-    for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
-      transientSourceImage,
-      projection,
-      indicator.getAbortSignal(),
-      boundsPoints,
-    )) {
-      const percentage = (pixelsCalculated / totalPixels) * 100;
-      indicator.updateProgress(percentage);
-      image.src = canvas.toDataURL();
-      // release to the event loop to prevent the browser from completely locking up and to permit
-      // the user to hit the cancel button
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
-    indicator.complete();
-  } catch (error) {
-    indicator.destroy();
-    throw error;
+  for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
+    transientSourceImage,
+    projection,
+    operation.abortController.signal,
+    boundsPoints,
+  )) {
+    operation.updateProgress(pixelsCalculated / totalPixels);
+    image.src = canvas.toDataURL();
+    // release to the event loop to prevent the browser from completely locking up and to permit
+    // the user to hit the cancel button
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
+
+  operation.tryComplete();
 }
 
 const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> = {

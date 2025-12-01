@@ -12,7 +12,7 @@
 }
 
 /* Individual progress indicator box */
-.mercator-shmercator-progress-box {
+.mercator-shmercator-container {
   position: absolute;
   background: rgba(0, 0, 0, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -67,18 +67,17 @@
   transform: translate(-50%, -50%) rotate(-45deg);
 }
 
-.mercator-shmercator-progress-box:hover .mercator-shmercator-spinner::before,
-.mercator-shmercator-progress-box:hover .mercator-shmercator-spinner::after {
+.mercator-shmercator-container:hover .mercator-shmercator-spinner::before,
+.mercator-shmercator-container:hover .mercator-shmercator-spinner::after {
   opacity: 1;
 }
 
-.mercator-shmercator-progress-box:hover .mercator-shmercator-spinner {
+.mercator-shmercator-container:hover .mercator-shmercator-spinner {
   border-color: transparent;
   animation: none;
 }
 
-/* Progress text */
-.mercator-shmercator-progress-text {
+.mercator-shmercator-subtitle {
   color: rgba(255, 255, 255, 0.85);
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -124,11 +123,11 @@
 }
 
 /* Completed state */
-.mercator-shmercator-progress-box.mercator-shmercator-completed {
+.mercator-shmercator-container.mercator-shmercator-completed {
   opacity: 0.5;
   cursor: pointer;
 }
 
-.mercator-shmercator-progress-box.mercator-shmercator-completed:hover {
+.mercator-shmercator-container.mercator-shmercator-completed:hover {
   opacity: 0.8;
 }
