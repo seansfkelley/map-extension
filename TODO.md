@@ -2,5 +2,4 @@
 - add globe projection based on webgl
 - look into other projections not from xkcd
 - manually clean up `reproject` cause it looks kinda fishy
-- fix revert icon
 - visual tests?

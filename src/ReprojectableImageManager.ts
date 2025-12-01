@@ -104,6 +104,12 @@ export class ReprojectableImageManager {
       }
     });
 
+    this.subtitle = document.createElement('div');
+    this.subtitle.className = 'mercator-shmercator-subtitle';
+
+    this.container.appendChild(this.subtitle);
+    getOverlaySingleton().appendChild(this.container);
+
     this.spinnerAndCancelContainer = document.createElement('div');
     this.spinnerAndCancelContainer.className = 'mercator-shmercator-icon-container';
 
@@ -111,19 +117,15 @@ export class ReprojectableImageManager {
     spinner.className = 'mercator-shmercator-spinner';
 
     const cancelIcon = document.createElement('div');
-    cancelIcon.className = 'mercator-shmercator-cancel-icon';
+    cancelIcon.className = 'mercator-shmercator-icon cancel';
+    cancelIcon.textContent = '✕';
 
     this.spinnerAndCancelContainer.appendChild(spinner);
     this.spinnerAndCancelContainer.appendChild(cancelIcon);
 
-    this.subtitle = document.createElement('div');
-    this.subtitle.className = 'mercator-shmercator-subtitle';
-
-    this.container.appendChild(this.subtitle);
-    getOverlaySingleton().appendChild(this.container);
-
     this.revertIcon = document.createElement('div');
-    this.revertIcon.className = 'mercator-shmercator-revert-icon';
+    this.revertIcon.className = 'mercator-shmercator-icon revert';
+    this.revertIcon.textContent = '↺';
     this.revertIcon.title = 'Revert to original';
 
     this.isInitialized = true;
