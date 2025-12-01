@@ -156,7 +156,6 @@ async function* reproject(
       pixelsCalculated++;
     }
 
-    // Yield after completing a row, but only if approximately 1 second has elapsed
     const currentTime = performance.now();
     if (currentTime - lastYieldTime >= 1000) {
       destCtx.putImageData(destData, 0, 0);

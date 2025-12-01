@@ -1,5 +1,16 @@
+// Shared overlay singleton
+let sharedOverlay: HTMLDivElement | null = null;
+
+function getSharedOverlay(): HTMLDivElement {
+  if (!sharedOverlay) {
+    sharedOverlay = document.createElement('div');
+    sharedOverlay.className = 'mercator-shmercator-indicator-overlay';
+    document.documentElement.append(sharedOverlay);
+  }
+  return sharedOverlay;
+}
+
 export class ProgressIndicator {
-  private overlay: HTMLDivElement | null = null;
   private progressBox: HTMLDivElement | null = null;
   private spinner: HTMLDivElement | null = null;
   private progressText: HTMLDivElement | null = null;
@@ -7,20 +18,11 @@ export class ProgressIndicator {
   private originalImageSrc: string | null = null;
   private updateInterval: number | null = null;
 
-  private ensureOverlay(): HTMLDivElement {
-    if (!this.overlay) {
-      this.overlay = document.createElement('div');
-      this.overlay.className = 'mercator-shmercator-indicator-overlay';
-      document.body.appendChild(this.overlay);
-    }
-    return this.overlay;
-  }
-
   show(image: HTMLImageElement): void {
     this.targetImage = image;
     this.originalImageSrc = image.src;
 
-    const overlay = this.ensureOverlay();
+    const overlay = getSharedOverlay();
 
     this.progressBox = document.createElement('div');
     this.progressBox.className = 'mercator-shmercator-progress-box';
@@ -101,10 +103,11 @@ export class ProgressIndicator {
     const rect = this.targetImage.getBoundingClientRect();
 
     // Position in top-right corner with some padding
-    const right = window.innerWidth - rect.right + 8;
-    const top = rect.top + 8;
+    // Use pageXOffset/pageYOffset to account for scroll position
+    const left = window.pageXOffset + rect.right - this.progressBox.offsetWidth - 8;
+    const top = window.pageYOffset + rect.top + 8;
 
-    this.progressBox.style.right = `${right}px`;
+    this.progressBox.style.left = `${left}px`;
     this.progressBox.style.top = `${top}px`;
   }
 }
