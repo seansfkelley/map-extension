@@ -1,9 +1,7 @@
 - add icons
-- add remaining projections
 - add globe projection based on webgl
 - test all projections
 - unit tests possible? visual tests?
 - look into other projections not from xkcd
 - manually clean up `reproject` cause it looks kinda fishy
 - fix revert icon
-- each projection should just have a known aspect ratio you can hardcode, or at least, calculate with only one or two inversions -- use that instead of ridiculous sampling

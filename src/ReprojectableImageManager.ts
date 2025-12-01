@@ -45,8 +45,7 @@ export class ReprojectableImageManager {
   private updateInterval: number | undefined;
 
   private container: HTMLDivElement | undefined;
-  private spinner: HTMLDivElement | undefined;
-  private cancelIcon: HTMLDivElement | undefined;
+  private spinnerAndCancelContainer: HTMLDivElement | undefined;
   private revertIcon: HTMLDivElement | undefined;
   private subtitle: HTMLDivElement | undefined;
 
@@ -84,6 +83,38 @@ export class ReprojectableImageManager {
 
     this.container = document.createElement('div');
     this.container.className = 'mercator-shmercator-container';
+    this.container.addEventListener('click', () => {
+      if (this.currentOperation == null) {
+        // No operation = the button is in reversion mode.
+        this.imageElement.src = this.originalImageSrc;
+        this.hide();
+      } else {
+        // Otherwise we're in cancel mode.
+        this.currentOperation.abortController.abort();
+        this.currentOperation = undefined;
+
+        this.imageElement.src = this.previousImageSrc;
+        if (this.previousImageSrc === this.originalImageSrc) {
+          this.hide();
+        } else {
+          // Cancelling if we did a convert on a convert actually means that we just soft-revert to
+          // the previous convert, so we show the revert button again.
+          this.showRevertButton();
+        }
+      }
+    });
+
+    this.spinnerAndCancelContainer = document.createElement('div');
+    this.spinnerAndCancelContainer.className = 'mercator-shmercator-icon-container';
+
+    const spinner = document.createElement('div');
+    spinner.className = 'mercator-shmercator-spinner';
+
+    const cancelIcon = document.createElement('div');
+    cancelIcon.className = 'mercator-shmercator-cancel-icon';
+
+    this.spinnerAndCancelContainer.appendChild(spinner);
+    this.spinnerAndCancelContainer.appendChild(cancelIcon);
 
     this.subtitle = document.createElement('div');
     this.subtitle.className = 'mercator-shmercator-subtitle';
@@ -91,32 +122,9 @@ export class ReprojectableImageManager {
     this.container.appendChild(this.subtitle);
     getOverlaySingleton().appendChild(this.container);
 
-    this.spinner = document.createElement('div');
-    this.spinner.className = 'mercator-shmercator-spinner';
-
-    this.cancelIcon = document.createElement('div');
-    this.cancelIcon.className = 'mercator-shmercator-cancel-icon';
-    this.cancelIcon.addEventListener('click', () => {
-      assert(this.currentOperation != null, 'cannot cancel if no operation is in progress');
-      this.currentOperation.abortController.abort();
-      this.currentOperation = undefined;
-
-      this.imageElement.src = this.previousImageSrc;
-      if (this.previousImageSrc === this.originalImageSrc) {
-        this.hide();
-      } else {
-        this.showRevertButton();
-      }
-    });
-
     this.revertIcon = document.createElement('div');
     this.revertIcon.className = 'mercator-shmercator-revert-icon';
     this.revertIcon.title = 'Revert to original';
-    this.revertIcon.addEventListener('click', () => {
-      assert(this.currentOperation == null, 'cannot revert if an operation is in progress');
-      this.imageElement.src = this.originalImageSrc;
-      this.hide();
-    });
 
     this.isInitialized = true;
   }
@@ -126,8 +134,7 @@ export class ReprojectableImageManager {
 
     this.container!.style.display = ''; // empty string = do whatever the CSS says
     this.revertIcon!.remove();
-    this.container!.insertBefore(this.spinner!, this.subtitle!);
-    this.container!.insertBefore(this.cancelIcon!, this.subtitle!);
+    this.container!.insertBefore(this.spinnerAndCancelContainer!, this.subtitle!);
     this.subtitle!.textContent = '0%';
 
     clearInterval(this.updateInterval);
@@ -139,8 +146,7 @@ export class ReprojectableImageManager {
     this.assertInitialized();
 
     this.container!.style.display = ''; // empty string = do whatever the CSS says
-    this.spinner!.remove();
-    this.cancelIcon!.remove();
+    this.spinnerAndCancelContainer!.remove();
     this.container!.insertBefore(this.revertIcon!, this.subtitle!);
     this.subtitle!.textContent = 'Revert';
 

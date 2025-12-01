@@ -23,6 +23,7 @@
   pointer-events: auto;
   cursor: pointer;
   user-select: none;
+  min-width: max-content;
 }
 
 .mercator-shmercator-container:hover {
@@ -34,6 +35,16 @@
   background: rgba(0, 0, 0, 0.8);
 }
 
+.mercator-shmercator-icon-container {
+  display: grid;
+  grid-template-areas: 'icon';
+  place-items: center;
+}
+
+.mercator-shmercator-icon-container > * {
+  grid-area: icon;
+}
+
 .mercator-shmercator-spinner {
   width: 18px;
   height: 18px;
@@ -41,6 +52,11 @@
   border-top-color: rgba(255, 255, 255, 0.8);
   border-radius: 50%;
   animation: mercator-shmercator-spin 0.8s linear infinite;
+  transition: opacity 0.2s ease;
+}
+
+.mercator-shmercator-container:hover .mercator-shmercator-spinner {
+  opacity: 0;
 }
 
 @keyframes mercator-shmercator-spin {
@@ -54,12 +70,13 @@
   width: 18px;
   height: 18px;
   position: relative;
-  cursor: pointer;
-  display: none;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .mercator-shmercator-container:hover .mercator-shmercator-cancel-icon {
-  display: block;
+  opacity: 1;
 }
 
 .mercator-shmercator-cancel-icon::before,
@@ -68,7 +85,7 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 10px;
+  width: 14px;
   height: 2px;
   background: rgba(255, 255, 255, 0.9);
 }
@@ -79,10 +96,6 @@
 
 .mercator-shmercator-cancel-icon::after {
   transform: translate(-50%, -50%) rotate(-45deg);
-}
-
-.mercator-shmercator-container:hover .mercator-shmercator-spinner {
-  display: none;
 }
 
 .mercator-shmercator-subtitle {
@@ -102,12 +115,7 @@
   border: 2px solid rgba(255, 255, 255, 0.8);
   border-radius: 50%;
   position: relative;
-  cursor: pointer;
-  transition: opacity 0.2s ease, border-color 0.2s ease;
-}
-
-.mercator-shmercator-revert-icon:hover {
-  border-color: rgba(255, 255, 255, 1);
+  pointer-events: none;
 }
 
 .mercator-shmercator-revert-icon::before {
@@ -121,12 +129,6 @@
   border-left: 1.5px solid rgba(255, 255, 255, 0.8);
   transform: translate(-50%, -50%) rotate(-45deg);
   transform-origin: center;
-  transition: border-color 0.2s ease;
-}
-
-.mercator-shmercator-revert-icon:hover::before {
-  border-top-color: rgba(255, 255, 255, 1);
-  border-left-color: rgba(255, 255, 255, 1);
 }
 
 .mercator-shmercator-revert-icon::after {
@@ -139,10 +141,4 @@
   border-top: 1.5px solid rgba(255, 255, 255, 0.8);
   border-right: 1.5px solid rgba(255, 255, 255, 0.8);
   transform: rotate(-45deg);
-  transition: border-color 0.2s ease;
-}
-
-.mercator-shmercator-revert-icon:hover::after {
-  border-top-color: rgba(255, 255, 255, 1);
-  border-right-color: rgba(255, 255, 255, 1);
 }
