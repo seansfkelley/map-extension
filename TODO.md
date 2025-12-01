@@ -5,6 +5,7 @@
 - unit tests possible? visual tests?
 - look into other projections not from xkcd
 - manually clean up `reproject` cause it looks kinda fishy
+- fix revert icon
 - include a percentage and ETA so the receiver can implement a cancellation button to revert
   - also just include a reversion button
 - each projection should just have a known aspect ratio you can hardcode, or at least, calculate with only one or two inversions -- use that instead of ridiculous sampling

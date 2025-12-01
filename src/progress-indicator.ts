@@ -1,31 +1,43 @@
-// Shared overlay singleton
-let sharedOverlay: HTMLDivElement | null = null;
+import { assert } from './util';
 
-function getSharedOverlay(): HTMLDivElement {
-  if (!sharedOverlay) {
-    sharedOverlay = document.createElement('div');
-    sharedOverlay.className = 'mercator-shmercator-indicator-overlay';
-    document.documentElement.append(sharedOverlay);
+let overlaySingleton: HTMLDivElement | undefined;
+
+function getOverlaySingleton(): HTMLDivElement {
+  if (!overlaySingleton) {
+    overlaySingleton = document.createElement('div');
+    overlaySingleton.className = 'mercator-shmercator-indicator-overlay';
+    document.documentElement.append(overlaySingleton);
   }
-  return sharedOverlay;
+  return overlaySingleton;
 }
 
 export class ProgressIndicator {
-  private progressBox: HTMLDivElement | null = null;
-  private spinner: HTMLDivElement | null = null;
-  private progressText: HTMLDivElement | null = null;
-  private targetImage: HTMLImageElement | null = null;
-  private originalImageSrc: string | null = null;
-  private updateInterval: number | null = null;
+  private targetImage: HTMLImageElement;
+  private originalImageSrc: string;
+  private abortController: AbortController = new AbortController();
+  private destroyed = false;
 
-  show(image: HTMLImageElement): void {
+  private container: HTMLDivElement | undefined;
+  private spinner: HTMLDivElement | undefined;
+  private progressText: HTMLDivElement | undefined;
+  private updateInterval: number | undefined;
+
+  constructor(image: HTMLImageElement) {
     this.targetImage = image;
     this.originalImageSrc = image.src;
+  }
 
-    const overlay = getSharedOverlay();
+  private assertNotDestroyed() {
+    assert(!this.destroyed, 'cannot modify a destroyed progress indicator');
+  }
 
-    this.progressBox = document.createElement('div');
-    this.progressBox.className = 'mercator-shmercator-progress-box';
+  show(): void {
+    this.assertNotDestroyed();
+
+    const overlay = getOverlaySingleton();
+
+    this.container = document.createElement('div');
+    this.container.className = 'mercator-shmercator-progress-box';
 
     this.spinner = document.createElement('div');
     this.spinner.className = 'mercator-shmercator-spinner';
@@ -34,27 +46,45 @@ export class ProgressIndicator {
     this.progressText.className = 'mercator-shmercator-progress-text';
     this.progressText.textContent = '0%';
 
-    this.progressBox.appendChild(this.spinner);
-    this.progressBox.appendChild(this.progressText);
-    overlay.appendChild(this.progressBox);
+    this.container.appendChild(this.spinner);
+    this.container.appendChild(this.progressText);
+    overlay.appendChild(this.container);
+
+    this.spinner.addEventListener('click', () => {
+      this.abortController.abort();
+
+      if (this.targetImage && this.originalImageSrc) {
+        this.targetImage.src = this.originalImageSrc;
+      }
+
+      this.destroy();
+    });
 
     this.updatePosition();
     this.updateInterval = window.setInterval(() => this.updatePosition(), 100);
   }
 
+  getAbortSignal(): AbortSignal {
+    return this.abortController.signal;
+  }
+
   updateProgress(percentage: number): void {
+    this.assertNotDestroyed();
+
     if (this.progressText) {
       this.progressText.textContent = `${Math.round(percentage)}%`;
     }
   }
 
   complete(): void {
-    if (this.updateInterval !== null) {
+    this.assertNotDestroyed();
+
+    if (this.updateInterval != null) {
       clearInterval(this.updateInterval);
-      this.updateInterval = null;
+      this.updateInterval = undefined;
     }
 
-    if (!this.progressBox || !this.spinner || !this.progressText) {
+    if (!this.container || !this.spinner || !this.progressText) {
       return;
     }
 
@@ -64,39 +94,38 @@ export class ProgressIndicator {
     revertIcon.className = 'mercator-shmercator-revert-icon';
     revertIcon.title = 'Revert to original';
 
-    this.progressBox.insertBefore(revertIcon, this.progressText);
+    this.container.insertBefore(revertIcon, this.progressText);
     this.progressText.textContent = 'Revert';
-    this.progressBox.classList.add('mercator-shmercator-completed');
+    this.container.classList.add('mercator-shmercator-completed');
 
     const handleRevert = () => {
       if (this.targetImage && this.originalImageSrc) {
         this.targetImage.src = this.originalImageSrc;
       }
-      this.hide();
+      this.destroy();
     };
 
-    this.progressBox.addEventListener('click', handleRevert);
+    this.container.addEventListener('click', handleRevert);
   }
 
-  hide(): void {
-    if (this.updateInterval !== null) {
+  public destroy(): void {
+    if (this.destroyed === true) {
+      return;
+    }
+    this.destroyed = true;
+
+    if (this.updateInterval != null) {
       clearInterval(this.updateInterval);
-      this.updateInterval = null;
+      this.updateInterval = undefined;
     }
 
-    if (this.progressBox) {
-      this.progressBox.remove();
-      this.progressBox = null;
-    }
-
-    this.spinner = null;
-    this.progressText = null;
-    this.targetImage = null;
-    this.originalImageSrc = null;
+    this.container?.remove();
   }
 
   private updatePosition(): void {
-    if (!this.progressBox || !this.targetImage) {
+    this.assertNotDestroyed();
+
+    if (!this.container || !this.targetImage) {
       return;
     }
 
@@ -104,10 +133,10 @@ export class ProgressIndicator {
 
     // Position in top-right corner with some padding
     // Use pageXOffset/pageYOffset to account for scroll position
-    const left = window.pageXOffset + rect.right - this.progressBox.offsetWidth - 8;
+    const left = window.pageXOffset + rect.right - this.container.offsetWidth - 8;
     const top = window.pageYOffset + rect.top + 8;
 
-    this.progressBox.style.left = `${left}px`;
-    this.progressBox.style.top = `${top}px`;
+    this.container.style.left = `${left}px`;
+    this.container.style.top = `${top}px`;
   }
 }

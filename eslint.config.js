@@ -23,6 +23,7 @@ module.exports = [
           varsIgnorePattern: '^_',
         },
       ],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
     },
   },
 ];

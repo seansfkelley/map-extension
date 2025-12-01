@@ -9,12 +9,7 @@ import {
 import { geoAirocean } from 'd3-geo-polygon';
 import { bilinearInterpolate } from './bilinear-interpolation';
 import { ProgressIndicator } from './progress-indicator';
-
-function assert(condition: unknown, message?: string): asserts condition {
-  if (!condition) {
-    throw new Error(message ?? 'Assertion failed');
-  }
-}
+import { assert } from './util';
 
 let lastContextMenuTarget: HTMLImageElement | undefined;
 
@@ -36,6 +31,7 @@ const DEFAULT_BOUNDS: Array<[number, number]> = [
 async function* reproject(
   sourceImage: HTMLImageElement,
   destProjection: GeoProjection,
+  abortSignal: AbortSignal,
   boundsPoints: Array<[number, number]> = DEFAULT_BOUNDS,
 ): AsyncGenerator<{
   canvas: HTMLCanvasElement;
@@ -88,8 +84,6 @@ async function* reproject(
   destProjection
     .scale(scale)
     .translate([destWidth / 2 - centerX * scale, destHeight / 2 - centerY * scale]);
-
-  console.log({ naturalWidth, naturalHeight, scale, destWidth, destHeight });
 
   const mercator = geoMercator()
     .scale(sourceWidth / (2 * Math.PI))
@@ -158,14 +152,15 @@ async function* reproject(
 
     const currentTime = performance.now();
     if (currentTime - lastYieldTime >= 1000) {
+      if (abortSignal.aborted) {
+        return;
+      }
+
       destCtx.putImageData(destData, 0, 0);
       const elapsedMs = currentTime - startTime;
       const pixelsRemaining = totalPixels - pixelsCalculated;
       const pixelsPerMs = pixelsCalculated / elapsedMs;
       const etaMs = pixelsPerMs > 0 ? pixelsRemaining / pixelsPerMs : 0;
-      console.log(
-        `Progress: ${y + 1}/${destHeight} rows, ${pixelsCalculated} pixels (${elapsedMs.toFixed(0)}ms elapsed, ${etaMs.toFixed(0)}ms ETA)`,
-      );
       yield { canvas: destCanvas, pixelsCalculated, totalPixels, elapsedMs, etaMs };
       lastYieldTime = currentTime;
     }
@@ -174,7 +169,6 @@ async function* reproject(
   destCtx.putImageData(destData, 0, 0);
   const endTime = performance.now();
   const elapsedMs = endTime - startTime;
-  console.log(`Reprojection complete in ${elapsedMs.toFixed(0)}ms`);
   yield { canvas: destCanvas, pixelsCalculated, totalPixels, elapsedMs, etaMs: 0 };
 }
 
@@ -183,19 +177,26 @@ async function reprojectWithProgress(
   projection: GeoProjection,
   boundsPoints?: Array<[number, number]>,
 ): Promise<void> {
-  const indicator = new ProgressIndicator();
-  indicator.show(image);
-  for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
-    image,
-    projection,
-    boundsPoints,
-  )) {
-    const percentage = (pixelsCalculated / totalPixels) * 100;
-    indicator.updateProgress(percentage);
-    image.src = canvas.toDataURL();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+  const indicator = new ProgressIndicator(image);
+  indicator.show();
+
+  try {
+    for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
+      image,
+      projection,
+      indicator.getAbortSignal(),
+      boundsPoints,
+    )) {
+      const percentage = (pixelsCalculated / totalPixels) * 100;
+      indicator.updateProgress(percentage);
+      image.src = canvas.toDataURL();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    indicator.complete();
+  } catch (error) {
+    indicator.destroy();
+    throw error;
   }
-  indicator.complete();
 }
 
 const callbacks: Record<Projection, (image: HTMLImageElement) => Promise<void>> = {

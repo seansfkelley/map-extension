@@ -35,12 +35,46 @@
   border-top-color: rgba(255, 255, 255, 0.8);
   border-radius: 50%;
   animation: mercator-shmercator-spin 0.8s linear infinite;
+  position: relative;
+  cursor: pointer;
 }
 
 @keyframes mercator-shmercator-spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* X icon that appears on hover */
+.mercator-shmercator-spinner::before,
+.mercator-shmercator-spinner::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.9);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.mercator-shmercator-spinner::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.mercator-shmercator-spinner::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.mercator-shmercator-progress-box:hover .mercator-shmercator-spinner::before,
+.mercator-shmercator-progress-box:hover .mercator-shmercator-spinner::after {
+  opacity: 1;
+}
+
+.mercator-shmercator-progress-box:hover .mercator-shmercator-spinner {
+  border-color: transparent;
+  animation: none;
 }
 
 /* Progress text */
