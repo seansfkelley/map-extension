@@ -6,25 +6,9 @@ const config: Config = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   extensionsToTreatAsEsm: ['.ts'],
   testMatch: ['**/*.test.ts'],
-  moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1',
-  },
-  transformIgnorePatterns: [
-    'node_modules/(?!(d3-geo|d3-geo-projection|d3-geo-polygon|d3-array|d3-path|internmap)/)',
-  ],
+  transformIgnorePatterns: [],
   transform: {
-    '^.+\\.(ts|tsx)$': [
-      'ts-jest',
-      {
-        useESM: true,
-      },
-    ],
-    '^.+\\.(js|jsx)$': [
-      'ts-jest',
-      {
-        useESM: true,
-      },
-    ],
+    '^.+\\.js$': ['ts-jest', { useESM: true }],
   },
 };
 
