@@ -1,2 +1,0 @@
-- add icons
-- can have icons for menu items?
