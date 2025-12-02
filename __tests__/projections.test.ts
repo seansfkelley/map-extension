@@ -25,6 +25,7 @@ for (const projectionName of PROJECTIONS) {
       config.boundsSamplingPoints,
       nodeCanvasFactory,
       new AbortController().signal,
+      config.longitudeOffset ?? 0,
     )) {
       finalCanvas = canvas;
     }

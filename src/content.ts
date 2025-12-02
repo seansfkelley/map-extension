@@ -39,6 +39,7 @@ async function reprojectIncrementally(
   image: HTMLImageElement,
   projection: GeoProjection,
   boundsSamplingPoints: LonLat[],
+  longitudeOffset: number,
 ): Promise<void> {
   if (!managers.has(image)) {
     managers.set(image, new ReprojectableImageManager(image));
@@ -64,6 +65,7 @@ async function reprojectIncrementally(
     boundsSamplingPoints,
     domCanvasFactory,
     operation.abortController.signal,
+    longitudeOffset,
   )) {
     operation.updateProgress(pixelsCalculated / totalPixels);
     image.src = canvas.toDataURL();
@@ -77,11 +79,13 @@ async function reprojectIncrementally(
 
 chrome.runtime.onMessage.addListener(async (message: ExtensionMessage) => {
   if (lastContextMenuTarget != null) {
-    const { createGeoProjection, boundsSamplingPoints } = projectionConfigs[message.projection];
+    const { createGeoProjection, boundsSamplingPoints, longitudeOffset = 0 } =
+      projectionConfigs[message.projection];
     await reprojectIncrementally(
       lastContextMenuTarget,
       createGeoProjection(),
       boundsSamplingPoints,
+      longitudeOffset,
     );
   }
 });

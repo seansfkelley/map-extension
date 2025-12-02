@@ -22,6 +22,7 @@ export async function* reproject(
   boundsSamplingPoints: LonLat[],
   canvasFactory: CanvasFactory,
   abortSignal: AbortSignal,
+  longitudeOffset: number,
 ): AsyncGenerator<{
   canvas: HTMLCanvasElement;
   pixelsCalculated: number;
@@ -72,9 +73,15 @@ export async function* reproject(
       destHeight / 2 - scale * ((minY + maxY) / 2),
     ]);
 
+  // Apply longitude offset by shifting the Mercator translation.
+  // D3 geo uses degrees for lon/lat, but scale is in terms of radians.
+  // Mercator x = scale * lon_radians = (sourceWidth / (2π)) * lon_radians
+  // For lon_degrees: x = (sourceWidth / (2π)) * (lon_degrees * π/180) = lon_degrees * sourceWidth / 360
+  // Positive offset shifts the output eastward, so we subtract from translation to shift source sampling westward.
+  const longitudePixelOffset = (longitudeOffset * sourceWidth) / 360;
   const mercator = geoMercator()
     .scale(sourceWidth / (2 * Math.PI))
-    .translate([sourceWidth / 2, sourceHeight / 2]);
+    .translate([sourceWidth / 2 - longitudePixelOffset, sourceHeight / 2]);
 
   // ugh, just want blocks-as-values
   const sourceImageData = (() => {
@@ -124,25 +131,30 @@ export async function* reproject(
         continue;
       }
 
-      const sourceCoordinates = mercator(lonLat) as PixelCoordinates | null;
+      let sourceCoordinates = mercator(lonLat) as PixelCoordinates | null;
       if (sourceCoordinates == null) {
-        // The scale seems to assume that we're working with a cropped Mercator. Indeed, if you look
-        // at most images, they either truncate Greenland or show very little ocean above it,
-        // meaning they're dropping map near the poles where the Mercator projection gets _really_
+        // The scale assumes that we're working with a cropped Mercator. Indeed, if you look at most
+        // images, they either truncate Greenland or show very little ocean above it, meaning
+        // they're dropping map near the poles where the Mercator projection gets _really_
         // extraordinarily degenerate. Since saner projections handle poles better, they may query
         // for lon/lat around there, but the Mercator projection has nothing to provide (it's out of
         // bounds of the original image).
         //
-        // Note that we only check for nullity. In the case where the projection wants something
-        // near the poles, it'll fall back onto interpolating from whatever nearest point does exist
-        // in the Mercator, which sometimes looks stupid (especially if the image has a border) but
-        // is probably (?) better than leaving that section totally blank.
-        //
-        // TODO: Is this actually the reason? It's a bit hard to tell.
-        //
-        // TODO: Is there a way we can do this more analytically, say by just looking at the lon/lat
-        // directly or by calling a function on the scale to ask if it's in bounds?
+        // Note that we only check for nullity. We may be (initially) out of bounds due to the
+        // longitude offset requiring us to wrap around (see below), or maybe the projection wants
+        // something near the poles that cropped Mercator simply does not have. In the latter case,
+        // we rely on the interpolation to clamp the sampling to the bounds of the image, and accept
+        // that we'll be severely distorting whatever is on the edge onto the poles -- which should
+        // be okay, being only blank ocean or Antarctica.
         continue;
+      }
+
+      // In the case of a longitude offset, we might have to wrap around. We assume at most one
+      // wrapping in each direction.
+      if (sourceCoordinates[0] < 0) {
+        sourceCoordinates[0] += sourceWidth;
+      } else if (sourceCoordinates[0] >= sourceWidth) {
+        sourceCoordinates[0] -= sourceWidth;
       }
 
       const [r, g, b, a] = bilinearInterpolate(sourceImageData, sourceCoordinates);

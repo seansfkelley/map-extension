@@ -21,6 +21,13 @@ const STANDARD_CRITICAL_POINTS: LonLat[] = [
 export interface ProjectionConfig {
   createGeoProjection: () => GeoProjection;
   boundsSamplingPoints: LonLat[];
+  /**
+   * How many degrees eastward (negative for westward) to shift the meridian.
+   *
+   * Mercator projections are typically centered on the meridian. Some projections reduce
+   * continental distortion if the meridian is placed elsewhere.
+   */
+  longitudeOffset?: number;
 }
 
 export const projectionConfigs: Record<Projection, ProjectionConfig> = {
@@ -56,6 +63,7 @@ export const projectionConfigs: Record<Projection, ProjectionConfig> = {
       LonLat.of(180, 0),
       LonLat.of(-90, 0),
     ],
+    longitudeOffset: 20,
   },
   'Plate Carrée (Equirectangular)': {
     createGeoProjection: () => geoEquirectangular(),
@@ -89,6 +97,7 @@ export const projectionConfigs: Record<Projection, ProjectionConfig> = {
       LonLat.of(-180, 0),
       LonLat.of(180, 0),
     ],
+    longitudeOffset: 20,
   },
   'Winkel-Tripel': {
     createGeoProjection: () => geoWinkel3(),
