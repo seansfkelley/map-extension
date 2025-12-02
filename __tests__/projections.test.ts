@@ -1,6 +1,6 @@
 import { reproject } from '../src/reproject';
 import { projectionConfigs } from '../src/projections';
-import { Projection } from '../src/types';
+import { Projection, PROJECTIONS } from '../src/types';
 import { nodeCanvasFactory } from './canvasMock';
 import * as path from 'path';
 import { Canvas } from 'canvas';
@@ -17,7 +17,7 @@ const FIXTURE_SIZES: Record<Projection, FixtureSize> = {
   'Gall-Peters': 'large',
   'Goode Homolosine': 'large',
   'Hobo-Dyer': 'large',
-  'Peirce Quincuncial': 'large',
+  'Peirce Quincuncial': 'medium',
   'Plate Carrée (Equirectangular)': 'large',
   'Robinson': 'large',
   'Van der Grinten': 'large',
@@ -25,8 +25,15 @@ const FIXTURE_SIZES: Record<Projection, FixtureSize> = {
   'Winkel-Tripel': 'large',
 };
 
-it.each(Object.keys(FIXTURE_SIZES) as Projection[])(
-  'should reproject %s to match the snapshot',
+// Jest timeouts are apparently not the right tool for this job -- they are only for catching hangs,
+// rather than enforcing a specific time bound. Implement time bounds ourselves.
+const DEFAULT_MAX_DURATION = 2500;
+const MAX_DURATION_OVERRIDES: Partial<Record<Projection, number>> = {
+  Dymaxion: 7500,
+};
+
+it.each([...PROJECTIONS].sort())(
+  `should reproject %s to match the snapshot`,
   async (projection) => {
     const config = projectionConfigs[projection];
     const sourceImage = await nodeCanvasFactory.loadImage(
@@ -34,6 +41,7 @@ it.each(Object.keys(FIXTURE_SIZES) as Projection[])(
     );
 
     let finalCanvas: HTMLCanvasElement | undefined;
+    const startTime = performance.now();
 
     for await (const { canvas } of reproject(
       sourceImage,
@@ -44,6 +52,10 @@ it.each(Object.keys(FIXTURE_SIZES) as Projection[])(
       config.longitudeOffset ?? 0,
     )) {
       finalCanvas = canvas;
+
+      expect(performance.now() - startTime).toBeLessThan(
+        MAX_DURATION_OVERRIDES[projection] || DEFAULT_MAX_DURATION,
+      );
     }
 
     expect(finalCanvas).toBeDefined();
