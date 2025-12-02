@@ -1,15 +1,15 @@
 export const _projections = [
   // https://xkcd.com/977/
-  'Van der Grinten',
-  'Robinson',
   'Dymaxion',
-  'Winkel-Tripel',
+  'Gall-Peters',
   'Goode Homolosine',
   'Hobo-Dyer',
-  'Plate Carrée (Equirectangular)',
-  'Waterman Butterfly',
-  'Gall-Peters',
   'Peirce Quincuncial',
+  'Plate Carrée (Equirectangular)',
+  'Robinson',
+  'Van der Grinten',
+  'Waterman Butterfly',
+  'Winkel-Tripel',
 ] as const;
 export const PROJECTIONS = _projections as readonly Projection[];
 export type Projection = (typeof _projections)[number];
