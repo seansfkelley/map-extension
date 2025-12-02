@@ -17,27 +17,17 @@ function newCanvasAndContext(width: number, height: number, canvasFactory: Canva
   return [canvas, context] as const;
 }
 
-export async function* reproject(
-  sourceImage: HTMLImageElement,
-  projectionConfig: ProjectionConfig,
-  canvasFactory: CanvasFactory,
-  abortSignal: AbortSignal,
-): AsyncGenerator<{
-  canvas: HTMLCanvasElement;
-  pixelsCalculated: number;
-  totalPixels: number;
-}> {
-  const destProjection = projectionConfig.createGeoProjection();
-
-  assert(destProjection.invert != null, 'projection must support inversion');
-
-  const unitProjection = destProjection.scale(1).translate([0, 0]);
+function computeUnitScaleDimensions({
+  createGeoProjection,
+  representativeBoundingCoordinates,
+}: ProjectionConfig) {
+  const unitProjection = createGeoProjection().scale(1).translate([0, 0]);
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
   let maxY = -Infinity;
 
-  for (const [lon, lat] of projectionConfig.representativeBoundingCoordinates) {
+  for (const [lon, lat] of representativeBoundingCoordinates) {
     const point = unitProjection([lon, lat]);
     if (point != null && isFinite(point[0]) && isFinite(point[1])) {
       minX = Math.min(minX, point[0]);
@@ -52,34 +42,46 @@ export async function* reproject(
     'could not determine valid projection bounds',
   );
 
-  const naturalWidth = maxX - minX;
-  const naturalHeight = maxY - minY;
+  const width = maxX - minX;
+  const height = maxY - minY;
 
-  assert(naturalWidth > 0 && naturalHeight > 0, 'invalid natural dimensions', {
-    naturalWidth,
-    naturalHeight,
+  assert(width > 0 && height > 0, 'computed unit dimensions must be strictly positive', {
+    width,
+    height,
   });
 
-  const sourceWidth = sourceImage.naturalWidth || sourceImage.width;
-  const sourceHeight = sourceImage.naturalHeight || sourceImage.height;
+  return { width, height };
+}
 
-  const scale = sourceWidth / naturalWidth;
+export async function* reproject(
+  sourceImage: HTMLImageElement,
+  projectionConfig: ProjectionConfig,
+  canvasFactory: CanvasFactory,
+  abortSignal: AbortSignal,
+): AsyncGenerator<{
+  canvas: HTMLCanvasElement;
+  pixelsCalculated: number;
+  totalPixels: number;
+}> {
+  const sourceWidth = sourceImage.naturalWidth;
+  const sourceHeight = sourceImage.naturalHeight;
+
+  const { width: destUnitWidth, height: destUnitHeight } =
+    computeUnitScaleDimensions(projectionConfig);
+
   const destWidth = sourceWidth;
-  const destHeight = Math.ceil(naturalHeight * scale);
-
-  destProjection
-    .scale(scale)
-    .translate([
-      destWidth / 2 - scale * ((minX + maxX) / 2),
-      destHeight / 2 - scale * ((minY + maxY) / 2),
-    ]);
+  const destHeight = Math.ceil(destWidth * (destUnitHeight / destUnitWidth));
 
   // 360: d3 scales use degrees.
   // 2pi: Mercator unit projection means the equator is a unit circle, i.e., 2pi.
   const longitudePixelOffset = ((projectionConfig.longitudeOffset ?? 0) * sourceWidth) / 360;
-  const mercator = geoMercator()
+  const sourceProjection = geoMercator()
     .scale(sourceWidth / (2 * Math.PI))
     .translate([sourceWidth / 2 - longitudePixelOffset, sourceHeight / 2]);
+
+  const destProjection = projectionConfig.createGeoProjection();
+  assert(destProjection.invert != null, 'projection must support inversion');
+  destProjection.scale(destWidth / destUnitWidth).translate([destWidth / 2, destHeight / 2]);
 
   // ugh, just want blocks-as-values
   const sourceImageData = (() => {
@@ -129,7 +131,7 @@ export async function* reproject(
         continue;
       }
 
-      const sourceCoordinates = mercator(lonLat) as PixelCoordinates | null;
+      const sourceCoordinates = sourceProjection(lonLat) as PixelCoordinates | null;
       if (sourceCoordinates == null) {
         // The scale assumes that we're working with a cropped Mercator. Indeed, if you look at most
         // images, they either truncate Greenland or show very little ocean above it, meaning
