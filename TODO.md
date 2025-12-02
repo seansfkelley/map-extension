@@ -1,6 +1,2 @@
 - add icons
 - can have icons for menu items?
-- audit dependencies
-- file tickets for future work
-  - add globe projection based on webgl
-  - other projections
