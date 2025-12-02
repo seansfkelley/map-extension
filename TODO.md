@@ -1,4 +1,5 @@
 - add icons
+- can have icons for menu items?
 - simplify Jest config; it's got a lot of crazy shit in it
 - make the visual test file more idiomatic
 - audit dependencies

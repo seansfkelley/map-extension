@@ -13,7 +13,7 @@ document.addEventListener('contextmenu', (event) => {
   }
 });
 
-export const domCanvasFactory: CanvasFactory = {
+const domCanvasFactory: CanvasFactory = {
   createCanvas(width: number, height: number): HTMLCanvasElement {
     const canvas = document.createElement('canvas');
     canvas.width = width;
