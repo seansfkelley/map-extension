@@ -8,26 +8,6 @@ export interface CanvasFactory {
   loadImage(src: string, crossOrigin?: string | null): Promise<HTMLImageElement>;
 }
 
-export const defaultCanvasFactory: CanvasFactory = {
-  createCanvas(width: number, height: number): HTMLCanvasElement {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    return canvas;
-  },
-  loadImage(src: string, crossOrigin?: string | null): Promise<HTMLImageElement> {
-    return new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      if (crossOrigin !== undefined) {
-        img.crossOrigin = crossOrigin;
-      }
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('failed to load original image'));
-      img.src = src;
-    });
-  },
-};
-
 function newCanvasAndContext(width: number, height: number, canvasFactory: CanvasFactory) {
   const canvas = canvasFactory.createCanvas(width, height);
   const context = canvas.getContext('2d');
@@ -39,9 +19,9 @@ function newCanvasAndContext(width: number, height: number, canvasFactory: Canva
 export async function* reproject(
   sourceImage: HTMLImageElement,
   destProjection: GeoProjection,
-  abortSignal: AbortSignal,
   boundsSamplingPoints: LonLat[],
-  canvasFactory: CanvasFactory = defaultCanvasFactory,
+  canvasFactory: CanvasFactory,
+  abortSignal: AbortSignal,
 ): AsyncGenerator<{
   canvas: HTMLCanvasElement;
   pixelsCalculated: number;

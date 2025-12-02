@@ -1,3 +1,11 @@
 - add icons
-- add globe projection based on webgl
-- visual tests?
+- simplify Jest config; it's got a lot of crazy shit in it
+- make the visual test file more idiomatic
+- audit dependencies
+- clean up how dependency injection is being done for canvas, etc.
+- figure out how to run tests when Dymaxion takes 500 years
+- fix type error with node-canvas
+- general code quality audit since I just moved a ton of stuff around
+- file tickets for future work
+  - add globe projection based on webgl
+  - other projections

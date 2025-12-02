@@ -3,7 +3,7 @@ import { type GeoProjection } from 'd3-geo';
 import { ReprojectableImageManager } from './ReprojectableImageManager';
 import { assert } from './util';
 import { projectionConfigs } from './projections';
-import { reproject } from './reproject';
+import { CanvasFactory, reproject } from './reproject';
 
 let lastContextMenuTarget: HTMLImageElement | undefined;
 
@@ -12,6 +12,26 @@ document.addEventListener('contextmenu', (event) => {
     lastContextMenuTarget = event.target;
   }
 });
+
+export const domCanvasFactory: CanvasFactory = {
+  createCanvas(width: number, height: number): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    return canvas;
+  },
+  loadImage(src: string, crossOrigin?: string | null): Promise<HTMLImageElement> {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      if (crossOrigin != null) {
+        img.crossOrigin = crossOrigin;
+      }
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('failed to load original image'));
+      img.src = src;
+    });
+  },
+};
 
 const managers = new WeakMap<HTMLImageElement, ReprojectableImageManager>();
 
@@ -41,8 +61,9 @@ async function reprojectIncrementally(
   for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
     transientSourceImage,
     projection,
-    operation.abortController.signal,
     boundsSamplingPoints,
+    domCanvasFactory,
+    operation.abortController.signal,
   )) {
     operation.updateProgress(pixelsCalculated / totalPixels);
     image.src = canvas.toDataURL();

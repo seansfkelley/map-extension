@@ -3,6 +3,7 @@ import { projectionConfigs } from '../src/projections';
 import { PROJECTIONS } from '../src/types';
 import { nodeCanvasFactory } from './canvasMock';
 import * as path from 'path';
+import { Canvas } from 'canvas';
 
 const fixturePath = path.join(__dirname, 'fixtures', 'mercator.png');
 
@@ -14,7 +15,6 @@ for (const projectionName of PROJECTIONS) {
     const config = projectionConfigs[projectionName];
     const sourceImage = await nodeCanvasFactory.loadImage(fixturePath);
 
-    const abortController = new AbortController();
     const projection = config.createGeoProjection();
 
     let finalCanvas: HTMLCanvasElement | undefined;
@@ -22,16 +22,15 @@ for (const projectionName of PROJECTIONS) {
     for await (const { canvas } of reproject(
       sourceImage,
       projection,
-      abortController.signal,
       config.boundsSamplingPoints,
       nodeCanvasFactory,
+      new AbortController().signal,
     )) {
       finalCanvas = canvas;
     }
 
     expect(finalCanvas).toBeDefined();
-    // FIXME
-    const buffer = (finalCanvas as any).toBuffer('image/png');
+    const buffer = (finalCanvas as unknown as Canvas).toBuffer('image/png');
     expect(buffer).toMatchImageSnapshot({
       customSnapshotIdentifier: projectionName.replace(/[^a-zA-Z0-9]/g, '-'),
       failureThreshold: 0.01,
