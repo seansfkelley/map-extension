@@ -1,5 +1,7 @@
 # Mercator Shmercator
 
+Per [xkcd](https://xkcd.com/977/).
+
 ## Development
 
 Install dependencies:
