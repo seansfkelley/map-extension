@@ -131,7 +131,7 @@ export async function* reproject(
         continue;
       }
 
-      let sourceCoordinates = mercator(lonLat) as PixelCoordinates | null;
+      const sourceCoordinates = mercator(lonLat) as PixelCoordinates | null;
       if (sourceCoordinates == null) {
         // The scale assumes that we're working with a cropped Mercator. Indeed, if you look at most
         // images, they either truncate Greenland or show very little ocean above it, meaning

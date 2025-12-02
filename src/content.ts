@@ -79,8 +79,11 @@ async function reprojectIncrementally(
 
 chrome.runtime.onMessage.addListener(async (message: ExtensionMessage) => {
   if (lastContextMenuTarget != null) {
-    const { createGeoProjection, boundsSamplingPoints, longitudeOffset = 0 } =
-      projectionConfigs[message.projection];
+    const {
+      createGeoProjection,
+      boundsSamplingPoints,
+      longitudeOffset = 0,
+    } = projectionConfigs[message.projection];
     await reprojectIncrementally(
       lastContextMenuTarget,
       createGeoProjection(),
