@@ -1,27 +1,43 @@
 import { reproject } from '../src/reproject';
 import { projectionConfigs } from '../src/projections';
-import { PROJECTIONS } from '../src/types';
+import { Projection } from '../src/types';
 import { nodeCanvasFactory } from './canvasMock';
 import * as path from 'path';
 import { Canvas } from 'canvas';
 
-const fixturePath = path.join(__dirname, 'fixtures', 'mercator.png');
+type FixtureSize = 'small' | 'medium' | 'large';
 
-for (const projectionName of PROJECTIONS) {
-  if (projectionName === 'Dymaxion') {
-    continue;
-  }
-  it(`should correctly reproject to ${projectionName}`, async () => {
-    const config = projectionConfigs[projectionName];
-    const sourceImage = await nodeCanvasFactory.loadImage(fixturePath);
+function getFixturePath(size: FixtureSize): string {
+  return path.join(__dirname, 'fixtures', `mercator-${size}.png`);
+}
 
-    const projection = config.createGeoProjection();
+// Use the largest that isn't unreasonably slow to be able to test interpolation fidelity too.
+const FIXTURE_SIZES: Record<Projection, FixtureSize> = {
+  'Dymaxion': 'small',
+  'Gall-Peters': 'large',
+  'Goode Homolosine': 'large',
+  'Hobo-Dyer': 'large',
+  'Peirce Quincuncial': 'large',
+  'Plate Carrée (Equirectangular)': 'large',
+  'Robinson': 'large',
+  'Van der Grinten': 'large',
+  'Waterman Butterfly': 'medium',
+  'Winkel-Tripel': 'large',
+};
+
+it.each(Object.keys(FIXTURE_SIZES) as Projection[])(
+  'should reproject %s to match the snapshot',
+  async (projection) => {
+    const config = projectionConfigs[projection];
+    const sourceImage = await nodeCanvasFactory.loadImage(
+      getFixturePath(FIXTURE_SIZES[projection]),
+    );
 
     let finalCanvas: HTMLCanvasElement | undefined;
 
     for await (const { canvas } of reproject(
       sourceImage,
-      projection,
+      config.createGeoProjection(),
       config.boundsSamplingPoints,
       nodeCanvasFactory,
       new AbortController().signal,
@@ -33,9 +49,9 @@ for (const projectionName of PROJECTIONS) {
     expect(finalCanvas).toBeDefined();
     const buffer = (finalCanvas as unknown as Canvas).toBuffer('image/png');
     expect(buffer).toMatchImageSnapshot({
-      customSnapshotIdentifier: projectionName.replace(/[^a-zA-Z0-9]/g, '-'),
+      customSnapshotIdentifier: projection.replace(/[^a-zA-Z0-9]/g, '-'),
       failureThreshold: 0.01,
       failureThresholdType: 'percent',
     });
-  });
-}
+  },
+);
