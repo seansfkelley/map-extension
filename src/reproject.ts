@@ -1,7 +1,8 @@
-import { geoMercator, type GeoProjection } from 'd3-geo';
+import { geoMercator } from 'd3-geo';
 import { bilinearInterpolate } from './bilinearInterpolate';
 import { LonLat, PixelCoordinates } from './types';
 import { assert } from './util';
+import { ProjectionConfig } from './projections';
 
 export interface CanvasFactory {
   createCanvas(width: number, height: number): HTMLCanvasElement;
@@ -18,16 +19,16 @@ function newCanvasAndContext(width: number, height: number, canvasFactory: Canva
 
 export async function* reproject(
   sourceImage: HTMLImageElement,
-  destProjection: GeoProjection,
-  boundsSamplingPoints: LonLat[],
+  projectionConfig: ProjectionConfig,
   canvasFactory: CanvasFactory,
   abortSignal: AbortSignal,
-  longitudeOffset: number,
 ): AsyncGenerator<{
   canvas: HTMLCanvasElement;
   pixelsCalculated: number;
   totalPixels: number;
 }> {
+  const destProjection = projectionConfig.createGeoProjection();
+
   assert(destProjection.invert != null, 'projection must support inversion');
 
   const unitProjection = destProjection.scale(1).translate([0, 0]);
@@ -36,7 +37,7 @@ export async function* reproject(
   let minY = Infinity;
   let maxY = -Infinity;
 
-  for (const [lon, lat] of boundsSamplingPoints) {
+  for (const [lon, lat] of projectionConfig.representativeBoundingCoordinates) {
     const point = unitProjection([lon, lat]);
     if (point != null && isFinite(point[0]) && isFinite(point[1])) {
       minX = Math.min(minX, point[0]);
@@ -73,12 +74,9 @@ export async function* reproject(
       destHeight / 2 - scale * ((minY + maxY) / 2),
     ]);
 
-  // Apply longitude offset by shifting the Mercator translation.
-  // D3 geo uses degrees for lon/lat, but scale is in terms of radians.
-  // Mercator x = scale * lon_radians = (sourceWidth / (2π)) * lon_radians
-  // For lon_degrees: x = (sourceWidth / (2π)) * (lon_degrees * π/180) = lon_degrees * sourceWidth / 360
-  // Positive offset shifts the output eastward, so we subtract from translation to shift source sampling westward.
-  const longitudePixelOffset = (longitudeOffset * sourceWidth) / 360;
+  // 360: d3 scales use degrees.
+  // 2pi: Mercator unit projection means the equator is a unit circle, i.e., 2pi.
+  const longitudePixelOffset = ((projectionConfig.longitudeOffset ?? 0) * sourceWidth) / 360;
   const mercator = geoMercator()
     .scale(sourceWidth / (2 * Math.PI))
     .translate([sourceWidth / 2 - longitudePixelOffset, sourceHeight / 2]);

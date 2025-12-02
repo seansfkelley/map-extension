@@ -1,9 +1,6 @@
 - add icons
 - can have icons for menu items?
 - audit dependencies
-- clean up how dependency injection is being done for canvas, etc.
-- fix type error with node-canvas
-- general code quality audit since I just moved a ton of stuff around
 - file tickets for future work
   - add globe projection based on webgl
   - other projections

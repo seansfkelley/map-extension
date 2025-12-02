@@ -1,5 +1,4 @@
-import { type ExtensionMessage, LonLat } from './types';
-import { type GeoProjection } from 'd3-geo';
+import { type ExtensionMessage, Projection } from './types';
 import { ReprojectableImageManager } from './ReprojectableImageManager';
 import { assert } from './util';
 import { projectionConfigs } from './projections';
@@ -37,9 +36,7 @@ const managers = new WeakMap<HTMLImageElement, ReprojectableImageManager>();
 
 async function reprojectIncrementally(
   image: HTMLImageElement,
-  projection: GeoProjection,
-  boundsSamplingPoints: LonLat[],
-  longitudeOffset: number,
+  projection: Projection,
 ): Promise<void> {
   if (!managers.has(image)) {
     managers.set(image, new ReprojectableImageManager(image));
@@ -61,11 +58,9 @@ async function reprojectIncrementally(
 
   for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
     transientSourceImage,
-    projection,
-    boundsSamplingPoints,
+    projectionConfigs[projection],
     domCanvasFactory,
     operation.abortController.signal,
-    longitudeOffset,
   )) {
     operation.updateProgress(pixelsCalculated / totalPixels);
     image.src = canvas.toDataURL();
@@ -79,16 +74,6 @@ async function reprojectIncrementally(
 
 chrome.runtime.onMessage.addListener(async (message: ExtensionMessage) => {
   if (lastContextMenuTarget != null) {
-    const {
-      createGeoProjection,
-      boundsSamplingPoints,
-      longitudeOffset = 0,
-    } = projectionConfigs[message.projection];
-    await reprojectIncrementally(
-      lastContextMenuTarget,
-      createGeoProjection(),
-      boundsSamplingPoints,
-      longitudeOffset,
-    );
+    await reprojectIncrementally(lastContextMenuTarget, message.projection);
   }
 });

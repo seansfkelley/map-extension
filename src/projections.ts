@@ -20,7 +20,13 @@ const STANDARD_CRITICAL_POINTS: LonLat[] = [
 
 export interface ProjectionConfig {
   createGeoProjection: () => GeoProjection;
-  boundsSamplingPoints: LonLat[];
+  /**
+   * Used to calculate the correct aspect ratio for this projection. Instead of having to calculate
+   * the correct aspect ratio, which for some projections may vary based on the particulars of the
+   * implementation's layout choices (such as Dymaxion), the algorithm samples these bounding points
+   * and calculates it automatically.
+   */
+  representativeBoundingCoordinates: LonLat[];
   /**
    * How many degrees eastward (negative for westward) to shift the meridian.
    *
@@ -31,9 +37,9 @@ export interface ProjectionConfig {
 }
 
 export const projectionConfigs: Record<Projection, ProjectionConfig> = {
-  Dymaxion: {
+  'Dymaxion': {
     createGeoProjection: () => geoAirocean(),
-    boundsSamplingPoints: [
+    representativeBoundingCoordinates: [
       // Calculated empirically, based on the particulars of the projection d3 provides, since there
       // are multiple layouts possible.
       LonLat.of(39, -51), // min X
@@ -44,19 +50,19 @@ export const projectionConfigs: Record<Projection, ProjectionConfig> = {
   },
   'Gall-Peters': {
     createGeoProjection: () => geoCylindricalEqualArea().parallel(45),
-    boundsSamplingPoints: STANDARD_CRITICAL_POINTS,
+    representativeBoundingCoordinates: STANDARD_CRITICAL_POINTS,
   },
   'Goode Homolosine': {
     createGeoProjection: () => geoInterruptedHomolosine(),
-    boundsSamplingPoints: STANDARD_CRITICAL_POINTS,
+    representativeBoundingCoordinates: STANDARD_CRITICAL_POINTS,
   },
   'Hobo-Dyer': {
     createGeoProjection: () => geoCylindricalEqualArea().parallel(37.5),
-    boundsSamplingPoints: STANDARD_CRITICAL_POINTS,
+    representativeBoundingCoordinates: STANDARD_CRITICAL_POINTS,
   },
   'Peirce Quincuncial': {
     createGeoProjection: () => geoPeirceQuincuncial(),
-    boundsSamplingPoints: [
+    representativeBoundingCoordinates: [
       // The four midpoints of the square's edges are at the equator on these meridians.
       LonLat.of(0, 0),
       LonLat.of(90, 0),
@@ -67,19 +73,19 @@ export const projectionConfigs: Record<Projection, ProjectionConfig> = {
   },
   'Plate Carrée (Equirectangular)': {
     createGeoProjection: () => geoEquirectangular(),
-    boundsSamplingPoints: STANDARD_CRITICAL_POINTS,
+    representativeBoundingCoordinates: STANDARD_CRITICAL_POINTS,
   },
-  Robinson: {
+  'Robinson': {
     createGeoProjection: () => geoRobinson(),
-    boundsSamplingPoints: STANDARD_CRITICAL_POINTS,
+    representativeBoundingCoordinates: STANDARD_CRITICAL_POINTS,
   },
   'Van der Grinten': {
     createGeoProjection: () => geoVanDerGrinten(),
-    boundsSamplingPoints: STANDARD_CRITICAL_POINTS,
+    representativeBoundingCoordinates: STANDARD_CRITICAL_POINTS,
   },
   'Waterman Butterfly': {
     createGeoProjection: () => geoPolyhedralWaterman(),
-    boundsSamplingPoints: [
+    representativeBoundingCoordinates: [
       // There are variants of this projection, specifically around the south pole; these points are
       // chosen because the variation we use does not go all the way to the pole.
       //
@@ -101,6 +107,6 @@ export const projectionConfigs: Record<Projection, ProjectionConfig> = {
   },
   'Winkel-Tripel': {
     createGeoProjection: () => geoWinkel3(),
-    boundsSamplingPoints: STANDARD_CRITICAL_POINTS,
+    representativeBoundingCoordinates: STANDARD_CRITICAL_POINTS,
   },
 };

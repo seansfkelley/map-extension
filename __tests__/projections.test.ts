@@ -45,11 +45,9 @@ it.each([...PROJECTIONS].sort())(
 
     for await (const { canvas } of reproject(
       sourceImage,
-      config.createGeoProjection(),
-      config.boundsSamplingPoints,
+      config,
       nodeCanvasFactory,
       new AbortController().signal,
-      config.longitudeOffset ?? 0,
     )) {
       finalCanvas = canvas;
 
