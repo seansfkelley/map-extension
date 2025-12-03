@@ -46,6 +46,7 @@ export class ReprojectableImageManager {
 
   private container: HTMLDivElement | undefined;
   private spinnerAndCancelContainer: HTMLDivElement | undefined;
+  private errorAndCloseContainer: HTMLDivElement | undefined;
   private revertIcon: HTMLDivElement | undefined;
   private subtitle: HTMLDivElement | undefined;
 
@@ -72,6 +73,19 @@ export class ReprojectableImageManager {
     return this.currentOperation;
   }
 
+  public showError(): void {
+    this.maybeInitialize();
+    this.assertInitialized();
+
+    this.container!.style.display = ''; // empty string = do whatever the CSS says
+    this.spinnerAndCancelContainer!.remove();
+    this.revertIcon!.remove();
+    this.container!.insertBefore(this.errorAndCloseContainer!, this.subtitle!);
+    this.subtitle!.textContent = 'Error';
+
+    this.trackMovingTarget();
+  }
+
   private assertInitialized() {
     assert(this.isInitialized, 'indicator must be initialized before being interacted with');
   }
@@ -85,9 +99,19 @@ export class ReprojectableImageManager {
     this.container.className = 'mercator-schmercator-container';
     this.container.addEventListener('click', () => {
       if (this.currentOperation == null) {
-        // No operation = the button is in reversion mode.
-        this.imageElement.src = this.originalImageSrc;
-        this.hide();
+        // Check if we're in error mode by checking if error container is in the DOM
+        if (this.errorAndCloseContainer && this.container!.contains(this.errorAndCloseContainer)) {
+          // Error mode - close and revert to previous state
+          if (this.previousImageSrc === this.originalImageSrc) {
+            this.hide();
+          } else {
+            this.showRevertButton();
+          }
+        } else {
+          // No operation = the button is in reversion mode.
+          this.imageElement.src = this.originalImageSrc;
+          this.hide();
+        }
       } else {
         // Otherwise we're in cancel mode.
         this.currentOperation.abortController.abort();
@@ -123,6 +147,20 @@ export class ReprojectableImageManager {
     this.spinnerAndCancelContainer.appendChild(spinner);
     this.spinnerAndCancelContainer.appendChild(cancelIcon);
 
+    this.errorAndCloseContainer = document.createElement('div');
+    this.errorAndCloseContainer.className = 'mercator-schmercator-icon-container';
+
+    const errorIcon = document.createElement('div');
+    errorIcon.className = 'mercator-schmercator-icon error';
+    errorIcon.textContent = '⚠';
+
+    const closeIcon = document.createElement('div');
+    closeIcon.className = 'mercator-schmercator-icon close';
+    closeIcon.textContent = '✕';
+
+    this.errorAndCloseContainer.appendChild(errorIcon);
+    this.errorAndCloseContainer.appendChild(closeIcon);
+
     this.revertIcon = document.createElement('div');
     this.revertIcon.className = 'mercator-schmercator-icon revert';
     this.revertIcon.textContent = '↺';
@@ -139,9 +177,7 @@ export class ReprojectableImageManager {
     this.container!.insertBefore(this.spinnerAndCancelContainer!, this.subtitle!);
     this.subtitle!.textContent = '0%';
 
-    clearInterval(this.updateInterval);
-    this.updatePosition();
-    this.updateInterval = window.setInterval(() => this.updatePosition(), 100);
+    this.trackMovingTarget();
   }
 
   private showRevertButton() {
@@ -152,9 +188,7 @@ export class ReprojectableImageManager {
     this.container!.insertBefore(this.revertIcon!, this.subtitle!);
     this.subtitle!.textContent = 'Revert';
 
-    clearInterval(this.updateInterval);
-    this.updatePosition();
-    this.updateInterval = window.setInterval(() => this.updatePosition(), 100);
+    this.trackMovingTarget();
   }
 
   private hide(): void {
@@ -166,16 +200,20 @@ export class ReprojectableImageManager {
     clearInterval(this.updateInterval);
   }
 
-  private updatePosition(): void {
-    this.assertInitialized();
-    assert(this.container != null, 'container must exist if not destroyed');
+  private trackMovingTarget(): void {
+    if (this.updateInterval == null) {
+      this.updateInterval = window.setInterval(() => {
+        this.assertInitialized();
+        assert(this.container != null, 'container must exist if not destroyed');
 
-    const rect = this.imageElement.getBoundingClientRect();
+        const rect = this.imageElement.getBoundingClientRect();
 
-    const left = window.pageXOffset + rect.right - this.container.offsetWidth - 8;
-    const top = window.pageYOffset + rect.top + 8;
+        const left = window.pageXOffset + rect.right - this.container.offsetWidth - 8;
+        const top = window.pageYOffset + rect.top + 8;
 
-    this.container.style.left = `${left}px`;
-    this.container.style.top = `${top}px`;
+        this.container.style.left = `${left}px`;
+        this.container.style.top = `${top}px`;
+      }, 100);
+    }
   }
 }

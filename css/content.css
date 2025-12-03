@@ -89,7 +89,26 @@
   font-size: 32px;
 }
 
+.mercator-schmercator-icon.error {
+  font-size: 24px;
+  transition: opacity 0.2s ease;
+}
+
+.mercator-schmercator-icon.close {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-size: 20px;
+}
+
 .mercator-schmercator-container:hover .mercator-schmercator-icon.cancel {
+  opacity: 1;
+}
+
+.mercator-schmercator-container:hover .mercator-schmercator-icon.error {
+  opacity: 0;
+}
+
+.mercator-schmercator-container:hover .mercator-schmercator-icon.close {
   opacity: 1;
 }
 

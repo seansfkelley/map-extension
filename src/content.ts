@@ -45,31 +45,36 @@ async function reprojectIncrementally(
   const manager = managers.get(image);
   assert(manager != null, 'original image source must be stored');
 
-  const transientSourceImage = new Image();
-  transientSourceImage.crossOrigin = image.crossOrigin;
+  try {
+    const transientSourceImage = new Image();
+    transientSourceImage.crossOrigin = image.crossOrigin;
 
-  const operation = manager.startReprojectionOperation();
+    const operation = manager.startReprojectionOperation();
 
-  await new Promise<void>((resolve, reject) => {
-    transientSourceImage.onload = () => resolve();
-    transientSourceImage.onerror = () => reject(new Error('failed to load original image'));
-    transientSourceImage.src = operation.originalImageSrc;
-  });
+    await new Promise<void>((resolve, reject) => {
+      transientSourceImage.onload = () => resolve();
+      transientSourceImage.onerror = () => reject(new Error('failed to load original image'));
+      transientSourceImage.src = operation.originalImageSrc;
+    });
 
-  for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
-    transientSourceImage,
-    projectionConfigs[projection],
-    domCanvasFactory,
-    operation.abortController.signal,
-  )) {
-    operation.updateProgress(pixelsCalculated / totalPixels);
-    image.src = canvas.toDataURL();
-    // release to the event loop to prevent the browser from completely locking up and to permit
-    // the user to hit the cancel button
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
+      transientSourceImage,
+      projectionConfigs[projection],
+      domCanvasFactory,
+      operation.abortController.signal,
+    )) {
+      operation.updateProgress(pixelsCalculated / totalPixels);
+      image.src = canvas.toDataURL();
+      // release to the event loop to prevent the browser from completely locking up and to permit
+      // the user to hit the cancel button
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    operation.completeIfNotAborted();
+  } catch (e) {
+    console.error('error while trying to reproject image', e);
+    manager.showError();
   }
-
-  operation.completeIfNotAborted();
 }
 
 chrome.runtime.onMessage.addListener(async (message: ExtensionMessage) => {
