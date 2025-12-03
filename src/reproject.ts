@@ -72,12 +72,11 @@ export async function* reproject(
   const destWidth = sourceWidth;
   const destHeight = Math.ceil(destWidth * (destUnitHeight / destUnitWidth));
 
-  // 360: d3 scales use degrees.
   // 2pi: Mercator unit projection means the equator is a unit circle, i.e., 2pi.
-  const longitudePixelOffset = ((projectionConfig.longitudeOffset ?? 0) * sourceWidth) / 360;
   const sourceProjection = geoMercator()
     .scale(sourceWidth / (2 * Math.PI))
-    .translate([sourceWidth / 2 - longitudePixelOffset, sourceHeight / 2]);
+    .translate([sourceWidth / 2, sourceHeight / 2])
+    .rotate([-(projectionConfig.longitudeOffset ?? 0), 0]);
 
   const destProjection = projectionConfig.createGeoProjection();
   assert(destProjection.invert != null, 'projection must support inversion');
@@ -121,8 +120,10 @@ export async function* reproject(
       // Epsilon is REALLY big here instead of a more normal 1e-9 or smaller because Dymaxion has
       // noisy calculations and would fail a tighter bound.
       //
-      // TODO: Is there a way to do this more analytically, instead of doubling the amount of math
-      // we have to perform and by going in both directions?
+      // TODO: There does not seem to be a way to do this more analytically, without having to
+      // re-project. AFAICT the various clipping methods provided by d3 do not apply to inversion,
+      // so we can't ask it to just return null instead of implicitly wrapping it into the lon/lat
+      // domain.
       if (
         reprojectedCoordinates == null ||
         Math.abs(reprojectedCoordinates[0] - destinationCoordinates[0]) > 1e-3 ||
@@ -140,21 +141,10 @@ export async function* reproject(
         // for lon/lat around there, but the Mercator projection has nothing to provide (it's out of
         // bounds of the original image).
         //
-        // Note that we only check for nullity. We may be (initially) out of bounds due to the
-        // longitude offset requiring us to wrap around (see below), or maybe the projection wants
-        // something near the poles that cropped Mercator simply does not have. In the latter case,
-        // we rely on the interpolation to clamp the sampling to the bounds of the image, and accept
+        // We rely on the interpolation to clamp the sampling to the bounds of the image, and accept
         // that we'll be severely distorting whatever is on the edge onto the poles -- which should
         // be okay, being only blank ocean or Antarctica.
         continue;
-      }
-
-      // In the case of a longitude offset, we might have to wrap around. We assume at most one
-      // wrapping in each direction.
-      if (sourceCoordinates[0] < 0) {
-        sourceCoordinates[0] += sourceWidth;
-      } else if (sourceCoordinates[0] >= sourceWidth) {
-        sourceCoordinates[0] -= sourceWidth;
       }
 
       const [r, g, b, a] = bilinearInterpolate(sourceImageData, sourceCoordinates);
