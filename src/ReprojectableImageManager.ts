@@ -5,7 +5,7 @@ let overlaySingleton: HTMLDivElement | undefined;
 function getOverlaySingleton(): HTMLDivElement {
   if (!overlaySingleton) {
     overlaySingleton = document.createElement('div');
-    overlaySingleton.className = 'mercator-shmercator-indicator-overlay';
+    overlaySingleton.className = 'mercator-schmercator-indicator-overlay';
     document.documentElement.append(overlaySingleton);
   }
   return overlaySingleton;
@@ -82,7 +82,7 @@ export class ReprojectableImageManager {
     }
 
     this.container = document.createElement('div');
-    this.container.className = 'mercator-shmercator-container';
+    this.container.className = 'mercator-schmercator-container';
     this.container.addEventListener('click', () => {
       if (this.currentOperation == null) {
         // No operation = the button is in reversion mode.
@@ -105,26 +105,26 @@ export class ReprojectableImageManager {
     });
 
     this.subtitle = document.createElement('div');
-    this.subtitle.className = 'mercator-shmercator-subtitle';
+    this.subtitle.className = 'mercator-schmercator-subtitle';
 
     this.container.appendChild(this.subtitle);
     getOverlaySingleton().appendChild(this.container);
 
     this.spinnerAndCancelContainer = document.createElement('div');
-    this.spinnerAndCancelContainer.className = 'mercator-shmercator-icon-container';
+    this.spinnerAndCancelContainer.className = 'mercator-schmercator-icon-container';
 
     const spinner = document.createElement('div');
-    spinner.className = 'mercator-shmercator-spinner';
+    spinner.className = 'mercator-schmercator-spinner';
 
     const cancelIcon = document.createElement('div');
-    cancelIcon.className = 'mercator-shmercator-icon cancel';
+    cancelIcon.className = 'mercator-schmercator-icon cancel';
     cancelIcon.textContent = '✕';
 
     this.spinnerAndCancelContainer.appendChild(spinner);
     this.spinnerAndCancelContainer.appendChild(cancelIcon);
 
     this.revertIcon = document.createElement('div');
-    this.revertIcon.className = 'mercator-shmercator-icon revert';
+    this.revertIcon.className = 'mercator-schmercator-icon revert';
     this.revertIcon.textContent = '↺';
     this.revertIcon.title = 'Revert to original';
 

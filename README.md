@@ -1,4 +1,4 @@
-# Mercator Shmercator
+# Mercator Schmercator
 
 Per [xkcd](https://xkcd.com/977/).
 
