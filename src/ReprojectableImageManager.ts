@@ -11,7 +11,7 @@ function getOverlaySingleton(): HTMLDivElement {
   return overlaySingleton;
 }
 
-export class ReprojectionOperation {
+class ReprojectionOperation {
   public readonly abortController = new AbortController();
   private completed = false;
 
@@ -49,7 +49,7 @@ export class ReprojectableImageManager {
   private revertIcon: HTMLDivElement | undefined;
   private subtitle: HTMLDivElement | undefined;
 
-  constructor(image: HTMLImageElement) {
+  public constructor(image: HTMLImageElement) {
     this.imageElement = image;
     this.originalImageSrc = this.imageElement.src;
     this.previousImageSrc = this.imageElement.src;
