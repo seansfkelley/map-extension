@@ -5,6 +5,7 @@
   "scripts": {
     "build": "node esbuild.config.js",
     "watch": "node esbuild.config.js --watch",
+    "package-source": "rm -f source.zip && zip -r source.zip * -x '*.zip' -x .git -x '.*' -x 'node_modules/*' -x 'dist/*' -x '__tests__/*'",
     "package": "npm run build && rm -f extension.zip && zip -r extension.zip manifest.json dist/ icons/ css/",
     "test": "jest",
     "lint": "eslint . && prettier --check .",
