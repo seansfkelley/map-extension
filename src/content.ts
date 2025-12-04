@@ -61,7 +61,7 @@ async function reprojectIncrementally(
     await new Promise<void>((resolve, reject) => {
       transientSourceImage.onload = () => resolve();
       transientSourceImage.onerror = () => reject(new Error('failed to load original image'));
-      transientSourceImage.src = operation.originalImageSrc;
+      transientSourceImage.src = manager.originalImageSrc;
     });
 
     for await (const { canvas, pixelsCalculated, totalPixels } of reproject(

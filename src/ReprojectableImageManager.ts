@@ -18,7 +18,6 @@ class ReprojectionOperation {
 
   constructor(
     private subtitle: HTMLDivElement,
-    public readonly originalImageSrc: string,
     public readonly abort: () => void,
     private onEnd: (state: Exclude<OperationState, 'in-progress'>) => void,
   ) {
@@ -57,7 +56,7 @@ class ReprojectionOperation {
 }
 
 export class ReprojectableImageManager {
-  private originalImageSrc: string;
+  public readonly originalImageSrc: string;
   private imageElement: HTMLImageElement;
   private isInitialized = false;
 
@@ -84,26 +83,21 @@ export class ReprojectableImageManager {
 
     const previousImageSrc = this.imageElement.src;
 
-    this.previousOperation = new ReprojectionOperation(
-      this.subtitle!,
-      this.originalImageSrc,
-      abort,
-      (result) => {
-        if (result === 'completed') {
-          this.showRevertButton();
-        } else if (result === 'failed') {
-          this.showError();
-        } else if (result === 'aborted') {
-          if (previousImageSrc === this.imageElement.src) {
-            this.hide();
-          } else {
-            this.showRevertButton();
-          }
+    this.previousOperation = new ReprojectionOperation(this.subtitle!, abort, (result) => {
+      if (result === 'completed') {
+        this.showRevertButton();
+      } else if (result === 'failed') {
+        this.showError();
+      } else if (result === 'aborted') {
+        if (previousImageSrc === this.imageElement.src) {
+          this.hide();
         } else {
-          assertNever(result);
+          this.showRevertButton();
         }
-      },
-    );
+      } else {
+        assertNever(result);
+      }
+    });
 
     return this.previousOperation;
   }
