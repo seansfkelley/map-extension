@@ -43,12 +43,7 @@ it.each([...PROJECTIONS].sort())(
     let finalCanvas: HTMLCanvasElement | undefined;
     const startTime = performance.now();
 
-    for await (const { canvas } of reproject(
-      sourceImage,
-      config,
-      nodeCanvasFactory,
-      new AbortController().signal,
-    )) {
+    for await (const { canvas } of reproject(sourceImage, config, nodeCanvasFactory, () => {})) {
       finalCanvas = canvas;
 
       expect(performance.now() - startTime).toBeLessThan(
