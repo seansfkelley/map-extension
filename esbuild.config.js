@@ -9,7 +9,7 @@ const buildOptions = {
   entryPoints: ['src/content.ts', 'src/background.ts'],
   bundle: true,
   outdir: 'dist',
-  format: 'esm',
+  format: 'iife',
   metafile: true,
   plugins: [
     {
