@@ -6,6 +6,8 @@ Tired of every map everywhere being Mercator? Wish you could choose a more suita
 
 When you come across a Mercator world map and it's just not the right tool for the job, just right-click, hit Mercator Schmercator, and choose your favorite projection!
 
+![screenshot](./screenshots/annotated.png)
+
 ## Development
 
 Install dependencies:
