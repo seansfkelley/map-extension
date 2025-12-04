@@ -65,9 +65,6 @@ export class ReprojectableImageManager {
   private updateInterval: number | undefined;
 
   private container: HTMLDivElement | undefined;
-  private spinnerAndCancelContainer: HTMLDivElement | undefined;
-  private errorAndCloseContainer: HTMLDivElement | undefined;
-  private revertIcon: HTMLDivElement | undefined;
   private subtitle: HTMLDivElement | undefined;
 
   public constructor(image: HTMLImageElement) {
@@ -150,27 +147,12 @@ export class ReprojectableImageManager {
       }
     });
 
-    this.subtitle = document.createElement('div');
-    this.subtitle.className = 'mercator-schmercator-subtitle';
-
-    this.container.appendChild(this.subtitle);
-    getOverlaySingleton().appendChild(this.container);
-
-    this.spinnerAndCancelContainer = document.createElement('div');
-    this.spinnerAndCancelContainer.className = 'mercator-schmercator-icon-container';
-
     const spinner = document.createElement('div');
     spinner.className = 'mercator-schmercator-spinner';
 
     const cancelIcon = document.createElement('div');
     cancelIcon.className = 'mercator-schmercator-icon cancel';
     cancelIcon.textContent = '✕';
-
-    this.spinnerAndCancelContainer.appendChild(spinner);
-    this.spinnerAndCancelContainer.appendChild(cancelIcon);
-
-    this.errorAndCloseContainer = document.createElement('div');
-    this.errorAndCloseContainer.className = 'mercator-schmercator-icon-container';
 
     const errorIcon = document.createElement('div');
     errorIcon.className = 'mercator-schmercator-icon error';
@@ -180,13 +162,22 @@ export class ReprojectableImageManager {
     closeIcon.className = 'mercator-schmercator-icon close';
     closeIcon.textContent = '✕';
 
-    this.errorAndCloseContainer.appendChild(errorIcon);
-    this.errorAndCloseContainer.appendChild(closeIcon);
+    const revertIcon = document.createElement('div');
+    revertIcon.className = 'mercator-schmercator-icon revert';
+    revertIcon.textContent = '↺';
+    revertIcon.title = 'Revert to original';
 
-    this.revertIcon = document.createElement('div');
-    this.revertIcon.className = 'mercator-schmercator-icon revert';
-    this.revertIcon.textContent = '↺';
-    this.revertIcon.title = 'Revert to original';
+    this.subtitle = document.createElement('div');
+    this.subtitle.className = 'mercator-schmercator-subtitle';
+
+    this.container.appendChild(spinner);
+    this.container.appendChild(cancelIcon);
+    this.container.appendChild(errorIcon);
+    this.container.appendChild(closeIcon);
+    this.container.appendChild(revertIcon);
+    this.container.appendChild(this.subtitle);
+
+    getOverlaySingleton().appendChild(this.container);
 
     this.isInitialized = true;
   }
@@ -194,9 +185,7 @@ export class ReprojectableImageManager {
   private showSpinner(): void {
     this.assertInitialized();
 
-    this.container!.style.display = ''; // empty string = do whatever the CSS says
-    this.revertIcon!.remove();
-    this.container!.insertBefore(this.spinnerAndCancelContainer!, this.subtitle!);
+    this.container!.className = 'mercator-schmercator-container state-spinner';
     this.subtitle!.textContent = '0%';
 
     this.trackMovingTarget();
@@ -205,9 +194,7 @@ export class ReprojectableImageManager {
   private showRevertButton() {
     this.assertInitialized();
 
-    this.container!.style.display = ''; // empty string = do whatever the CSS says
-    this.spinnerAndCancelContainer!.remove();
-    this.container!.insertBefore(this.revertIcon!, this.subtitle!);
+    this.container!.className = 'mercator-schmercator-container state-revert';
     this.subtitle!.textContent = 'Revert';
 
     this.trackMovingTarget();
@@ -216,10 +203,7 @@ export class ReprojectableImageManager {
   private showError(): void {
     this.assertInitialized();
 
-    this.container!.style.display = ''; // empty string = do whatever the CSS says
-    this.spinnerAndCancelContainer!.remove();
-    this.revertIcon!.remove();
-    this.container!.insertBefore(this.errorAndCloseContainer!, this.subtitle!);
+    this.container!.className = 'mercator-schmercator-container state-error';
     this.subtitle!.textContent = 'Error';
 
     this.trackMovingTarget();
@@ -229,7 +213,7 @@ export class ReprojectableImageManager {
     this.assertInitialized();
 
     assert(this.container != null, 'container must exist');
-    this.container.style.display = 'none';
+    this.container.className = 'mercator-schmercator-container state-hidden';
 
     clearInterval(this.updateInterval);
   }
