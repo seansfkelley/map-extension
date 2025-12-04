@@ -34,8 +34,6 @@ const domCanvasFactory: CanvasFactory = {
 
 const managers = new WeakMap<HTMLImageElement, ReprojectableImageManager>();
 
-let ya = 0;
-
 async function reprojectIncrementally(
   image: HTMLImageElement,
   projection: Projection,
@@ -48,13 +46,9 @@ async function reprojectIncrementally(
   assert(manager != null, 'original image source must be stored');
 
   const abortController = new AbortController();
-  const operation = manager.startReprojectionOperation(abortController.abort);
+  const operation = manager.startReprojectionOperation(abortController.abort.bind(abortController));
 
   try {
-    if (++ya % 2 === 0) {
-      throw new Error('artificial');
-    }
-
     const transientSourceImage = new Image();
     transientSourceImage.crossOrigin = image.crossOrigin;
 
@@ -68,7 +62,7 @@ async function reprojectIncrementally(
       transientSourceImage,
       projectionConfigs[projection],
       domCanvasFactory,
-      () => abortController.signal.throwIfAborted(),
+      abortController.signal.throwIfAborted.bind(abortController.signal),
     )) {
       operation.updateProgress(pixelsCalculated / totalPixels);
       image.src = canvas.toDataURL();

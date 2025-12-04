@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "strict": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "lib": ["DOM", "ES2022.Array"]
   }
 }

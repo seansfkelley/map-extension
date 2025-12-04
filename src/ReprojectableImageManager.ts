@@ -60,7 +60,7 @@ export class ReprojectableImageManager {
   private imageElement: HTMLImageElement;
   private isInitialized = false;
 
-  private previousOperation: ReprojectionOperation | undefined;
+  private operations: ReprojectionOperation[] = [];
   private updateInterval: number | undefined;
 
   private container: HTMLDivElement | undefined;
@@ -73,7 +73,7 @@ export class ReprojectableImageManager {
 
   public startReprojectionOperation(abort: () => void): ReprojectionOperation {
     assert(
-      this.previousOperation == null || this.previousOperation.state !== 'in-progress',
+      this.operations.length === 0 || this.operations.at(-1)!.state !== 'in-progress',
       'cannot start an operation if one is in progress',
     );
 
@@ -83,23 +83,23 @@ export class ReprojectableImageManager {
 
     const previousImageSrc = this.imageElement.src;
 
-    this.previousOperation = new ReprojectionOperation(this.subtitle!, abort, (result) => {
-      if (result === 'completed') {
-        this.showRevertButton();
-      } else if (result === 'failed') {
-        this.showError();
-      } else if (result === 'aborted') {
-        if (previousImageSrc === this.imageElement.src) {
-          this.hide();
+    this.operations.push(
+      new ReprojectionOperation(this.subtitle!, abort, (result) => {
+        if (result === 'completed') {
+          // nop!
+        } else if (result === 'failed') {
+          this.imageElement.src = previousImageSrc;
+        } else if (result === 'aborted') {
+          this.imageElement.src = previousImageSrc;
+          this.operations.pop();
         } else {
-          this.showRevertButton();
+          assertNever(result);
         }
-      } else {
-        assertNever(result);
-      }
-    });
+        this.updateView();
+      }),
+    );
 
-    return this.previousOperation;
+    return this.operations.at(-1)!;
   }
 
   private assertInitialized() {
@@ -114,31 +114,25 @@ export class ReprojectableImageManager {
     this.container = document.createElement('div');
     this.container.className = 'mercator-schmercator-container';
     this.container.addEventListener('click', () => {
+      const currentOperation = this.operations.at(-1);
+      assert(currentOperation != null, 'should not be visible if an operation was never started');
       assert(
-        this.previousOperation != null,
-        'should not be visible if an operation was never started',
+        currentOperation.state !== 'aborted',
+        'aborted operations should not be present to click on',
       );
 
-      if (this.previousOperation.state === 'in-progress') {
-        this.previousOperation.abort();
-      } else if (this.previousOperation.state === 'failed') {
-        if (this.originalImageSrc === this.imageElement.src) {
-          this.hide();
-        } else {
-          this.showRevertButton();
-        }
-      } else if (
-        this.previousOperation.state === 'completed' ||
-        this.previousOperation.state === 'aborted'
-      ) {
-        // Aborted is included here because if we abort an operation, we either hide ourselves (in
-        // which case we cannot be interacted with) or we show the reversion button (in which case
-        // we're here).
+      if (currentOperation.state === 'in-progress') {
+        currentOperation.abort();
+      } else if (currentOperation.state === 'failed') {
+        this.operations.pop();
+      } else if (currentOperation.state === 'completed') {
         this.imageElement.src = this.originalImageSrc;
-        this.hide();
+        this.operations = [];
       } else {
-        assertNever(this.previousOperation.state);
+        assertNever(currentOperation.state);
       }
+
+      this.updateView();
     });
 
     const spinner = document.createElement('div');
@@ -176,6 +170,23 @@ export class ReprojectableImageManager {
     this.isInitialized = true;
   }
 
+  private updateView(): void {
+    const currentOperation = this.operations.at(-1);
+    if (currentOperation == null) {
+      this.hide();
+    } else if (currentOperation.state === 'completed') {
+      this.showRevertButton();
+    } else if (currentOperation.state === 'failed') {
+      this.showError();
+    } else if (currentOperation.state === 'in-progress') {
+      this.showSpinner();
+    } else if (currentOperation.state === 'aborted') {
+      throw new Error('should never be asked to render when the current operation is aborted');
+    } else {
+      assertNever(currentOperation.state);
+    }
+  }
+
   private showSpinner(): void {
     this.assertInitialized();
 
@@ -210,6 +221,7 @@ export class ReprojectableImageManager {
     this.container.className = 'mercator-schmercator-container state-hidden';
 
     clearInterval(this.updateInterval);
+    this.updateInterval = undefined;
   }
 
   private trackMovingTarget(): void {
