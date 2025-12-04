@@ -57,7 +57,7 @@ export async function* reproject(
   sourceImage: HTMLImageElement,
   projectionConfig: ProjectionConfig,
   canvasFactory: CanvasFactory,
-  abortSignal: AbortSignal,
+  throwIfAborted: () => void,
 ): AsyncGenerator<{
   canvas: HTMLCanvasElement;
   pixelsCalculated: number;
@@ -100,9 +100,7 @@ export async function* reproject(
     for (let x = 0; x < destWidth; x++) {
       pixelsCalculated++;
 
-      if (abortSignal.aborted) {
-        return;
-      }
+      throwIfAborted();
 
       const destinationCoordinates = PixelCoordinates.of(x, y);
       const lonLat = destProjection.invert(destinationCoordinates) as LonLat | null;
