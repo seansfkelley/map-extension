@@ -14,10 +14,9 @@
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 4px;
   padding: 6px 8px;
-  display: grid;
-  grid-template-areas: 'icon' 'subtitle';
-  grid-template-rows: auto auto;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 4px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   transition:
@@ -43,19 +42,12 @@
   background: rgba(0, 0, 0, 0.8);
 }
 
-/* All icons and spinner go in the icon grid area and overlay each other */
-.mercator-schmercator-spinner,
-.mercator-schmercator-icon {
-  grid-area: icon;
-}
 
-/* By default, hide all icons and spinner */
 .mercator-schmercator-spinner,
 .mercator-schmercator-icon {
   display: none;
 }
 
-/* State: spinner (in-progress) */
 .mercator-schmercator-container.state-spinner .mercator-schmercator-spinner {
   display: flex;
 }
@@ -72,7 +64,6 @@
   display: flex;
 }
 
-/* State: error */
 .mercator-schmercator-container.state-error .mercator-schmercator-icon.error {
   display: flex;
 }
@@ -89,7 +80,6 @@
   display: flex;
 }
 
-/* State: revert */
 .mercator-schmercator-container.state-revert .mercator-schmercator-icon.revert {
   display: flex;
 }
@@ -129,6 +119,7 @@
 
 .mercator-schmercator-icon.error {
   font-size: 24px;
+  color: #ff4444;
 }
 
 .mercator-schmercator-icon.close {
@@ -136,7 +127,6 @@
 }
 
 .mercator-schmercator-subtitle {
-  grid-area: subtitle;
   color: rgba(255, 255, 255, 0.85);
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
