@@ -58,6 +58,8 @@ async function reprojectIncrementally(
       transientSourceImage.src = manager.originalImageSrc;
     });
 
+    const startTime = performance.now();
+
     for await (const { canvas, pixelsCalculated, totalPixels } of reproject(
       transientSourceImage,
       projectionConfigs[projection],
@@ -70,6 +72,8 @@ async function reprojectIncrementally(
       // the user to hit the cancel button
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
+
+    console.log(`reprojected image in ${performance.now() - startTime}ms`);
 
     operation.onComplete();
   } catch (e) {
