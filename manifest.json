@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mercator Schmercator",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "browser_specific_settings": {
     "gecko": {
       "id": "{6de5b0d8-7a83-4fda-845f-68031867d992}",
