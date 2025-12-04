@@ -13,15 +13,16 @@ function getOverlaySingleton(): HTMLDivElement {
 
 export type OperationState = 'in-progress' | 'completed' | 'failed' | 'aborted';
 
-class ReprojectionOperation {
+/** Visible for testing. */
+export class ReprojectionOperation {
   private _state: OperationState = 'in-progress';
 
   constructor(
-    private subtitle: HTMLDivElement,
+    private onUpdate: (fraction: number) => void,
     public readonly abort: () => void,
     private onEnd: (state: Exclude<OperationState, 'in-progress'>) => void,
   ) {
-    this.subtitle.textContent = '0%';
+    this.onUpdate(0);
   }
 
   public get state() {
@@ -30,28 +31,25 @@ class ReprojectionOperation {
 
   public updateProgress(fraction: number): void {
     assert(this.state === 'in-progress', 'can only update operations that are in progress');
-    this.subtitle.textContent = `${Math.round(fraction * 100)}%`;
+    this.onUpdate(fraction);
   }
 
   public onAborted(): void {
-    if (this.state === 'in-progress') {
-      this._state = 'aborted';
-      this.onEnd(this._state);
-    }
+    assert(this.state === 'in-progress', 'can only abort operations that are in-progress');
+    this._state = 'aborted';
+    this.onEnd(this._state);
   }
 
   public onFailed(): void {
-    if (this.state === 'in-progress') {
-      this._state = 'failed';
-      this.onEnd(this._state);
-    }
+    assert(this.state === 'in-progress', 'can only fail operations that are in-progress');
+    this._state = 'failed';
+    this.onEnd(this._state);
   }
 
   public onComplete(): void {
-    if (this.state === 'in-progress') {
-      this._state = 'completed';
-      this.onEnd(this._state);
-    }
+    assert(this.state === 'in-progress', 'can only complete operations that are in-progress');
+    this._state = 'completed';
+    this.onEnd(this._state);
   }
 }
 
@@ -84,19 +82,25 @@ export class ReprojectableImageManager {
     const previousImageSrc = this.imageElement.src;
 
     this.operations.push(
-      new ReprojectionOperation(this.subtitle!, abort, (result) => {
-        if (result === 'completed') {
-          // nop!
-        } else if (result === 'failed') {
-          this.imageElement.src = previousImageSrc;
-        } else if (result === 'aborted') {
-          this.imageElement.src = previousImageSrc;
-          this.operations.pop();
-        } else {
-          assertNever(result);
-        }
-        this.updateView();
-      }),
+      new ReprojectionOperation(
+        (fraction) => {
+          this.subtitle!.textContent = `${Math.round(fraction * 100)}%`;
+        },
+        abort,
+        (result) => {
+          if (result === 'completed') {
+            // nop!
+          } else if (result === 'failed') {
+            this.imageElement.src = previousImageSrc;
+          } else if (result === 'aborted') {
+            this.imageElement.src = previousImageSrc;
+            this.operations.pop();
+          } else {
+            assertNever(result);
+          }
+          this.updateView();
+        },
+      ),
     );
 
     return this.operations.at(-1)!;
