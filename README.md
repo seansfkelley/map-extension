@@ -8,6 +8,10 @@ When you come across a Mercator world map and it's just not the right tool for t
 
 ![screenshot](./screenshots/annotated.png)
 
+## Installation
+
+Available for [Firefox](https://addons.mozilla.org/en-US/firefox/addon/mercator-schmercator/) and [Chrome-based browsers](https://chromewebstore.google.com/detail/mercator-schmercator/femonadmknhnpgoichppomnbfdbdldij).
+
 ## Development
 
 Install dependencies:
